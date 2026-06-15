@@ -1,0 +1,1757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgriRent Hub - Startup AgriTech Super Platform</title>
+  
+  <!-- CSS CDNs -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind Configuration for Rich Aesthetics -->
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              500: '#22c55e',
+              600: '#16a34a',
+              700: '#15803d',
+              800: '#166534',
+              900: '#14532d',
+            },
+            accent: {
+              500: '#f59e0b',
+              600: '#d97706',
+              700: '#b45309',
+            },
+            dark: {
+              800: '#1e293b',
+              900: '#0f172a',
+              950: '#020617',
+            }
+          },
+          fontFamily: {
+            sans: ['Outfit', 'Inter', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #020617;
+      color: #f1f5f9;
+      font-family: 'Outfit', sans-serif;
+    }
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glass-card {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.85) 100%);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .glass-card:hover {
+      border-color: rgba(34, 197, 94, 0.3);
+      box-shadow: 0 10px 30px -10px rgba(34, 197, 94, 0.15);
+      transform: translateY(-2px);
+    }
+    .scrollbar-hidden::-webkit-scrollbar {
+      display: none;
+    }
+    /* Simple dynamic wave animation for audio notes */
+    .voice-bar {
+      animation: wave 1.2s ease-in-out infinite alternate;
+    }
+    @keyframes wave {
+      0% { height: 4px; }
+      100% { height: 24px; }
+    }
+  </style>
+
+  <!-- React & Babel CDNs -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- Leaflet & Lucide Icons CDNs -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-dark-950 min-h-screen antialiased text-slate-100 selection:bg-primary-500/30 selection:text-primary-100">
+
+  <div id="root"></div>
+
+  <!-- React Application Core Component -->
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // Hardcoded dataset representing the product features
+    const initialTools = [
+      { id: 1, name: 'Mahindra Arjun Novo 605', category: 'Tractor', power: '57 HP', rentRates: { daily: 1500, weekly: 9000, monthly: 32000 }, location: [28.6250, 77.2150], images: 'https://images.unsplash.com/photo-1592982537447-7440770cbfc9?auto=format&fit=crop&q=80&w=400', rating: 4.8, owner: 'Rajesh Kumar' },
+      { id: 2, name: 'Rotavator Shaktiman 8 Feet', category: 'Rotavator', power: 'Fits 50+ HP', rentRates: { daily: 800, weekly: 4800, monthly: 16000 }, location: [28.6180, 77.1950], images: 'https://images.unsplash.com/photo-1595273670150-db0a3e39843c?auto=format&fit=crop&q=80&w=400', rating: 4.6, owner: 'Satnam Singh' },
+      { id: 3, name: 'Pneumatic Precision Seeder', category: 'Seeder', power: 'Precision Row', rentRates: { daily: 1200, weekly: 7200, monthly: 24000 }, location: [28.6320, 77.2340], images: 'https://images.unsplash.com/photo-1622383563227-04401ab4e5ea?auto=format&fit=crop&q=80&w=400', rating: 4.9, owner: 'Suresh Patel' },
+      { id: 4, name: 'John Deere Combines W70', category: 'Harvester', power: '100 HP', rentRates: { daily: 5000, weekly: 30000, monthly: 110000 }, location: [28.5950, 77.2210], images: 'https://images.unsplash.com/photo-1530906358829-e84b2769270f?auto=format&fit=crop&q=80&w=400', rating: 4.7, owner: 'Gurbaksh Singh' }
+    ];
+
+    const initialSeeds = [
+      { id: 1, name: 'Kanak Wheat Seeds HD-3086', price: 450, category: 'Wheat Seeds', rating: 4.8, stock: 24, images: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&q=80&w=200' },
+      { id: 2, name: 'Basmati Paddy Seeds 1121', price: 650, category: 'Rice Seeds', rating: 4.9, stock: 15, images: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&q=80&w=200' },
+      { id: 3, name: 'Hybrid Hybrid Sweet Corn', price: 320, category: 'Corn Seeds', rating: 4.5, stock: 40, images: 'https://images.unsplash.com/photo-1551754655-cd27e38d20f6?auto=format&fit=crop&q=80&w=200' }
+    ];
+
+    const initialFertilizers = [
+      { id: 1, name: 'Bio-Organic Compost Humus', price: 280, category: 'Organic', rating: 4.7, stock: 80, images: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&q=80&w=200' },
+      { id: 2, name: 'Granular Urea (46% Nitrogen)', price: 350, category: 'Urea', rating: 4.4, stock: 50, images: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&q=80&w=200' },
+      { id: 3, name: 'Diammonium Phosphate (DAP)', price: 980, category: 'DAP', rating: 4.6, stock: 22, images: 'https://images.unsplash.com/photo-1599599810769-bcde5a160d32?auto=format&fit=crop&q=80&w=200' }
+    ];
+
+    const initialCrops = [
+      { id: 1, cropName: 'Golden Wheat Bumper Harvest', price: 2150, unit: 'Quintal', quantity: 50, farmer: 'Ram Singh', location: 'Ludhiana, Punjab', images: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&q=80&w=250' },
+      { id: 2, cropName: 'Premium Basmati Paddy Rice', price: 4200, unit: 'Quintal', quantity: 30, farmer: 'Devendra Hooda', location: 'Karnal, Haryana', images: 'https://images.unsplash.com/photo-1536304997881-a372c179924b?auto=format&fit=crop&q=80&w=250' }
+    ];
+
+    function App() {
+      // States
+      const [activeTab, setActiveTab] = useState('landing');
+      const [role, setRole] = useState('Farmer');
+      const [user, setUser] = useState({ name: 'Ramesh Patel', coins: 120, xp: 80, badge: 'Beginner Farmer', kycStatus: 'Not Submitted' });
+      const [language, setLanguage] = useState('en');
+      
+      // Marketplace / Filters
+      const [searchQuery, setSearchQuery] = useState('');
+      const [selectedCategory, setSelectedCategory] = useState('All');
+      const [distanceFilter, setDistanceFilter] = useState(50);
+      const [cart, setCart] = useState([]);
+      const [wishlist, setWishlist] = useState([]);
+      const [comparisonList, setComparisonList] = useState([]);
+      
+      // booking
+      const [selectedTool, setSelectedTool] = useState(initialTools[0]);
+      const [bookingStartDate, setBookingStartDate] = useState('');
+      const [bookingEndDate, setBookingEndDate] = useState('');
+      const [bookings, setBookings] = useState([
+        { id: 1, toolName: 'Mahindra Arjun Novo 605', startDate: '2026-06-14', endDate: '2026-06-16', total: 4500, status: 'Approved' }
+      ]);
+      const [selectedView, setSelectedView] = useState('monthly');
+      const [bookingFilterStatus, setBookingFilterStatus] = useState('All');
+
+      // AI States
+      const [priceInputs, setPriceInputs] = useState({ crop: 'Wheat', state: 'Punjab', district: 'Ludhiana', season: 'Rabi' });
+      const [pricePrediction, setPricePrediction] = useState(null);
+      const [priceModel, setPriceModel] = useState('Linear Regression');
+      const [aiDiagnosisCrop, setAiDiagnosisCrop] = useState('Wheat');
+      const [aiDiagnosisResult, setAiDiagnosisResult] = useState(null);
+      const [diseaseModel, setDiseaseModel] = useState('CNN');
+      const [gamifiedChallenge, setGamifiedChallenge] = useState('quiz'); // 'quiz', 'disease', 'fertilizer'
+      const [aiAdvisorMessage, setAiAdvisorMessage] = useState('');
+      const [aiAdvisorLogs, setAiAdvisorLogs] = useState([
+        { sender: 'AI', text: 'Hello! I am your AI Agronomist. Ask me anything in English, Hindi, or Hinglish.' }
+      ]);
+      const [isRecording, setIsRecording] = useState(false);
+
+      // Chat Messages
+      const [chatLog, setChatLog] = useState([
+        { sender: 'Rajesh Kumar (Owner)', message: 'Hello Ramesh, the Mahindra tractor is fully serviced and ready for your farm.', time: '10:30 AM', image: '', voiceNote: false },
+        { sender: 'Me', message: 'Perfect! I will schedule the pickup for tomorrow morning.', time: '10:32 AM', image: '', voiceNote: false }
+      ]);
+      const [chatInput, setChatInput] = useState('');
+
+      // Gamification Quiz
+      const [quizIndex, setQuizIndex] = useState(0);
+      const [selectedOption, setSelectedOption] = useState(null);
+      const [quizScore, setQuizScore] = useState(0);
+      const [quizFinished, setQuizFinished] = useState(false);
+
+      // KYC
+      const [aadhaarInput, setAadhaarInput] = useState('');
+      const [kycType, setKycType] = useState('Farmer');
+      const [kycRecords, setKycRecords] = useState([
+        { id: 1, name: 'Sohan Lal', role: 'Tool Owner', aadhaar: '884930219483', status: 'Pending' },
+        { id: 2, name: 'Sanjay Dutt', role: 'Shopkeeper', aadhaar: '394820194820', status: 'Pending' }
+      ]);
+
+      // Crop selling farmer inputs
+      const [newCropName, setNewCropName] = useState('');
+      const [newCropPrice, setNewCropPrice] = useState('');
+      const [newCropQuantity, setNewCropQuantity] = useState('');
+      const [newCropUnit, setNewCropUnit] = useState('kg');
+      const [newCropLocation, setNewCropLocation] = useState('');
+
+      // Map Setup
+      const mapContainerRef = useRef(null);
+      const mapInstance = useRef(null);
+
+      // Translation dictionary
+      const t = (key) => {
+        const trans = {
+          en: {
+            heroTitle: 'Modern Farming, Shared Abundance',
+            heroSubtitle: 'Rent premium machinery, buy certified seeds/fertilizers, sell crops directly, and receive real-time AI agricultural advisory.',
+            rentNow: 'Rent Now', buyNow: 'Buy Now', sellCrop: 'Sell Crop',
+            diseaseDetect: 'Disease Detector', pricePredict: 'Price Predictor',
+            aiAssistant: 'AI Agronomist', dailyQuiz: 'Daily Quiz',
+            leaderboard: 'Leaderboard', searchPlaceholder: 'Search for tractors, seeds, crops...'
+          },
+          hi: {
+            heroTitle: 'आधुनिक खेती, साझा समृद्धि',
+            heroSubtitle: 'प्रीमियम उपकरण किराए पर लें, उच्च गुणवत्ता वाले बीज/खाद खरीदें, फसलें बेचें, और तुरंत एआई कृषि सलाह प्राप्त करें।',
+            rentNow: 'किराए पर लें', buyNow: 'अभी खरीदें', sellCrop: 'फसल बेचें',
+            diseaseDetect: 'रोग पहचान', pricePredict: 'मंडी भाव अनुमान',
+            aiAssistant: 'एआई कृषि मित्र', dailyQuiz: 'दैनिक प्रश्नोत्तरी',
+            leaderboard: 'रैंकिंग सूची', searchPlaceholder: 'ट्रैक्टर, कल्टीवेटर, बीज की खोज करें...'
+          },
+          hinglish: {
+            heroTitle: 'Modern Farming, Shared Abundance',
+            heroSubtitle: 'Machinery rent pe lein, certified seed/fertilizer kharidein, crop direct bechein aur expert AI advisory payein.',
+            rentNow: 'Rent Pe Lein', buyNow: 'Abhi Buy Karein', sellCrop: 'Crop Bechein',
+            diseaseDetect: 'Disease Scanner', pricePredict: 'Price Predictor',
+            aiAssistant: 'AI Agronomist', dailyQuiz: 'Daily Quiz Game',
+            leaderboard: 'Leaderboard Board', searchPlaceholder: 'Tractor, seeds, fertilizers search karein...'
+          }
+        };
+        return trans[language][key] || key;
+      };
+
+      // Speak function using speechSynthesis
+      const speakText = (text) => {
+        if ('speechSynthesis' in window) {
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.lang = language === 'hi' ? 'hi-IN' : 'en-US';
+          window.speechSynthesis.speak(utterance);
+        }
+      };
+
+      // Voice commands
+      const startVoiceSearch = () => {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+          alert('Speech Recognition not supported in this browser. Please use Google Chrome.');
+          return;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = language === 'hi' ? 'hi-IN' : 'en-US';
+        setIsRecording(true);
+
+        recognition.onresult = (event) => {
+          const transcript = event.results[0][0].transcript;
+          setSearchQuery(transcript);
+          setIsRecording(false);
+          speakText(language === 'hi' ? `खोजा जा रहा है ${transcript}` : `Searching for ${transcript}`);
+          
+          // Auto route checks based on transcript
+          if (transcript.toLowerCase().includes('tractor') || transcript.toLowerCase().includes('ट्रैक्टर')) {
+            setActiveTab('tools');
+          } else if (transcript.toLowerCase().includes('seed') || transcript.toLowerCase().includes('बीज') || transcript.toLowerCase().includes('fertilizer') || transcript.toLowerCase().includes('खाद')) {
+            setActiveTab('shop');
+          } else if (transcript.toLowerCase().includes('disease') || transcript.toLowerCase().includes('रोग')) {
+            setActiveTab('disease');
+          } else if (transcript.toLowerCase().includes('price') || transcript.toLowerCase().includes('भाव')) {
+            setActiveTab('price');
+          }
+        };
+
+        recognition.onerror = () => {
+          setIsRecording(false);
+        };
+
+        recognition.start();
+      };
+
+      // Booking validation & double booking prevention
+      const handleBooking = (e) => {
+        e.preventDefault();
+        if (!bookingStartDate || !bookingEndDate) {
+          alert('Please select start and end dates.');
+          return;
+        }
+
+        const start = new Date(bookingStartDate);
+        const end = new Date(bookingEndDate);
+
+        if (start >= end) {
+          alert('End date must be after start date.');
+          return;
+        }
+
+        // Check date overlap
+        const isOverlapping = bookings.some(b => {
+          if (b.toolName !== selectedTool.name || b.status === 'Rejected') return false;
+          const bStart = new Date(b.startDate);
+          const bEnd = new Date(b.endDate);
+          return start <= bEnd && end >= bStart;
+        });
+
+        if (isOverlapping) {
+          alert('Error: This machine is already booked or has a pending request during the selected dates. Please check the calendar.');
+          return;
+        }
+
+        const days = Math.round((end - start) / (1000 * 60 * 60 * 24));
+        const rate = selectedTool.rentRates.daily;
+        const total = days * rate;
+
+        const newBooking = {
+          id: bookings.length + 1,
+          toolName: selectedTool.name,
+          startDate: bookingStartDate,
+          endDate: bookingEndDate,
+          total,
+          status: 'Pending'
+        };
+
+        setBookings([newBooking, ...bookings]);
+        alert(`Success! Requested booking for ${selectedTool.name}. Total amount: ₹${total}`);
+      };
+
+      // AI price predictor evaluation
+      const handlePricePredict = (e) => {
+        e.preventDefault();
+        const basePrices = { Wheat: 2125, Rice: 2183, Corn: 1960, Soybean: 4300 };
+        const base = basePrices[priceInputs.crop] || 2000;
+        const seasonMult = priceInputs.season === 'Rabi' ? 1.06 : priceInputs.season === 'Zaid' ? 1.10 : 0.98;
+
+        const expected = Math.round(base * seasonMult);
+        
+        setPricePrediction({
+          crop: priceInputs.crop,
+          expected,
+          min: Math.round(expected * 0.9),
+          max: Math.round(expected * 1.12),
+          suggestedTime: seasonMult > 1.0 ? 'Sell immediately for peak returns.' : 'Hold. Market expects stable trend.',
+          confidence: '94.2%'
+        });
+      };
+
+      // AI disease scanner trigger
+      const runDiseaseScanner = (type) => {
+        const scannerResults = {
+          healthy: { name: 'Healthy Leaf Structure', confidence: '99.1%', severity: 'N/A (0%)', explanation: 'Leaf exhibits high chlorophyll activity. Keep up the organic inputs.', treatment: 'None needed.', prevention: 'Continue regular watering.' },
+          rust: { name: 'Wheat Leaf Rust (Puccinia triticina)', confidence: '94.8%', severity: 'Moderate (35%)', explanation: 'Fungal leaf pathogen causing orange-brown pustules on wheat leaves, reducing yield.', treatment: 'Apply Propiconazole fungicide spray immediately.', prevention: 'Grow rust-resistant crops next season.' },
+          blast: { name: 'Rice Blast blight (Magnaporthe oryzae)', confidence: '89.4%', severity: 'Severe (60%)', explanation: 'Fungal blight that produces spindle-shaped lesions on leaves.', treatment: 'Spray Tricyclazole fungicide at 1g/liter of water.', prevention: 'Treat seeds before planting.' }
+        };
+
+        setAiDiagnosisResult(scannerResults[type]);
+      };
+
+      // Chat message send
+      const sendChatMessage = (e) => {
+        e.preventDefault();
+        if (!chatInput.trim()) return;
+
+        const newMsg = { sender: 'Me', message: chatInput, time: 'Just Now', image: '', voiceNote: false };
+        setChatLog([...chatLog, newMsg]);
+        setChatInput('');
+
+        // Trigger AI auto-response
+        setTimeout(() => {
+          setChatLog(prev => [...prev, {
+            sender: 'Rajesh Kumar (Owner)',
+            message: 'Got it. I will keep the paperwork ready for verification.',
+            time: 'Just Now',
+            image: '',
+            voiceNote: false
+          }]);
+        }, 1500);
+      };
+
+      // Chat Voice Note Simulator
+      const sendVoiceNote = () => {
+        setChatLog([...chatLog, {
+          sender: 'Me',
+          message: 'Voice Note (0:08s)',
+          time: 'Just Now',
+          image: '',
+          voiceNote: true
+        }]);
+      };
+
+      // Quiz Evaluator
+      const quizQuestions = [
+        { q: 'Which nutrient is primarily responsible for green color in crops?', opts: ['Nitrogen', 'Phosphorus', 'Potassium'], ans: 'Nitrogen' },
+        { q: 'What is the ideal pH range for wheat farming?', opts: ['4.5 - 5.5', '6.0 - 7.0', '8.0 - 9.0'], ans: '6.0 - 7.0' },
+        { q: 'Which irrigation technique saves the most water?', opts: ['Flood', 'Furrow', 'Drip'], ans: 'Drip' }
+      ];
+
+      const submitQuizOption = (opt) => {
+        setSelectedOption(opt);
+        if (opt === quizQuestions[quizIndex].ans) {
+          setQuizScore(quizScore + 1);
+        }
+
+        setTimeout(() => {
+          if (quizIndex < quizQuestions.length - 1) {
+            setQuizIndex(quizIndex + 1);
+            setSelectedOption(null);
+          } else {
+            setQuizFinished(true);
+            // Award coins/XP
+            const xp = quizScore * 20 + 20;
+            const coins = quizScore * 10 + 10;
+            setUser(prev => ({
+              ...prev,
+              xp: prev.xp + xp,
+              coins: prev.coins + coins,
+              badge: prev.xp + xp >= 100 ? 'Skilled Farmer' : 'Beginner Farmer'
+            }));
+          }
+        }, 1200);
+      };
+
+      // KYC Submission
+      const handleKycSubmit = (e) => {
+        e.preventDefault();
+        if (!aadhaarInput || aadhaarInput.length !== 12) {
+          alert('Please provide a valid 12-digit Aadhaar Card number.');
+          return;
+        }
+
+        setUser(prev => ({ ...prev, kycStatus: 'Pending' }));
+        setKycRecords([...kycRecords, {
+          id: kycRecords.length + 1,
+          name: user.name,
+          role: kycType,
+          aadhaar: aadhaarInput,
+          status: 'Pending'
+        }]);
+        alert('KYC Documents submitted successfully for review.');
+      };
+
+      // Admin Review Trigger
+      const handleKycReview = (id, newStatus) => {
+        setKycRecords(kycRecords.map(rec => rec.id === id ? { ...rec, status: newStatus } : rec));
+        if (id === kycRecords.length) {
+          setUser(prev => ({ ...prev, kycStatus: newStatus }));
+        }
+      };
+
+      // Add Farmer crop listing
+      const handleAddCrop = (e) => {
+        e.preventDefault();
+        if (!newCropName || !newCropPrice || !newCropQuantity) {
+          alert('Please fill out all crop listing fields.');
+          return;
+        }
+
+        const newCrop = {
+          id: initialCrops.length + 3,
+          cropName: newCropName,
+          price: Number(newCropPrice),
+          quantity: Number(newCropQuantity),
+          unit: newCropUnit,
+          farmer: user.name,
+          location: newCropLocation || 'Local Farm',
+          images: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&q=80&w=250'
+        };
+
+        initialCrops.unshift(newCrop);
+        setNewCropName('');
+        setNewCropPrice('');
+        setNewCropQuantity('');
+        setNewCropLocation('');
+        alert('Crop listing posted successfully to the marketplace.');
+      };
+
+      // Interactive Map Setup on Tab Mount
+      useEffect(() => {
+        if ((activeTab === 'tools' || activeTab === 'landing') && mapContainerRef.current) {
+          // Initialize map only if not already initialized
+          if (!mapInstance.current) {
+            mapInstance.current = L.map(mapContainerRef.current).setView([28.6139, 77.2090], 11);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+              attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(mapInstance.current);
+
+            // Add markers for initialTools
+            initialTools.forEach(tool => {
+              L.marker(tool.location)
+                .addTo(mapInstance.current)
+                .bindPopup(`<b>${tool.name}</b><br/>Daily Rent: ₹${tool.rentRates.daily}<br/>Owner: ${tool.owner}`);
+            });
+          }
+        }
+      }, [activeTab]);
+
+      // Cart utilities
+      const addToCart = (product) => {
+        setCart([...cart, product]);
+        alert(`${product.name} added to cart!`);
+      };
+
+      const handleCheckout = () => {
+        if (cart.length === 0) return;
+        alert('Payment initiated via Razorpay Secure Sandbox. Processing ₹' + cart.reduce((acc, c) => acc + c.price, 0));
+        setCart([]);
+        setUser(prev => ({ ...prev, coins: prev.coins + 20, xp: prev.xp + 40 }));
+      };
+
+      return (
+        <div className="flex flex-col min-h-screen">
+          {/* Main Top Header Navigation */}
+          <nav className="fixed top-0 left-0 w-full z-50 glass-panel border-b border-slate-800">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex items-center justify-between h-20">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 bg-emerald-500/20 flex items-center justify-center rounded-xl border border-emerald-500/30">
+                    <span className="text-2xl">🌱</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xl font-bold tracking-tight text-white">AgriRent <span className="text-primary-500">Hub</span></span>
+                    <span className="text-[10px] text-slate-400 font-medium tracking-wider uppercase">Startup Platform</span>
+                  </div>
+                </div>
+
+                {/* Tabs */}
+                <div className="hidden lg:flex items-center space-x-1">
+                  <button onClick={() => setActiveTab('landing')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'landing' ? 'bg-primary-500/10 text-primary-500' : 'text-slate-300 hover:text-white'}`}>Home</button>
+                  <button onClick={() => setActiveTab('tools')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'tools' ? 'bg-primary-500/10 text-primary-500' : 'text-slate-300 hover:text-white'}`}>{t('rentNow')}</button>
+                  <button onClick={() => setActiveTab('shop')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'shop' ? 'bg-primary-500/10 text-primary-500' : 'text-slate-300 hover:text-white'}`}>{t('buyNow')}</button>
+                  <button onClick={() => setActiveTab('crops')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'crops' ? 'bg-primary-500/10 text-primary-500' : 'text-slate-300 hover:text-white'}`}>{t('sellCrop')}</button>
+                  
+                  <div className="h-4 w-[1px] bg-slate-800 mx-2"></div>
+                  
+                  <button onClick={() => setActiveTab('ai')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'ai' ? 'bg-primary-500/10 text-primary-500' : 'text-slate-300 hover:text-white'}`}>{t('aiAssistant')}</button>
+                  <button onClick={() => setActiveTab('disease')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'disease' ? 'bg-primary-500/10 text-primary-500' : 'text-slate-300 hover:text-white'}`}>{t('diseaseDetect')}</button>
+                  <button onClick={() => setActiveTab('price')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'price' ? 'bg-primary-500/10 text-primary-500' : 'text-slate-300 hover:text-white'}`}>{t('pricePredict')}</button>
+                  <button onClick={() => setActiveTab('quiz')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'quiz' ? 'bg-primary-500/10 text-primary-500' : 'text-slate-300 hover:text-white'}`}>{t('dailyQuiz')}</button>
+                  <button onClick={() => setActiveTab('chat')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'chat' ? 'bg-primary-500/10 text-primary-500' : 'text-slate-300 hover:text-white'}`}>Chat</button>
+                  <button onClick={() => setActiveTab('dashboard')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'dashboard' ? 'bg-primary-500/10 text-primary-500' : 'text-slate-300 hover:text-white'}`}>Dashboards</button>
+                </div>
+
+                {/* Right utility indicators */}
+                <div className="flex items-center gap-4">
+                  {/* Language switch */}
+                  <select
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value)}
+                    className="bg-slate-900 border border-slate-800 text-slate-300 text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-primary-500"
+                  >
+                    <option value="en">English</option>
+                    <option value="hi">हिन्दी</option>
+                    <option value="hinglish">Hinglish</option>
+                  </select>
+
+                  {/* Role Selector */}
+                  <select
+                    value={role}
+                    onChange={(e) => setRole(e.target.value)}
+                    className="bg-slate-900 border border-slate-800 text-slate-300 text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-primary-500 font-semibold text-emerald-400"
+                  >
+                    <option value="Farmer">Role: Farmer</option>
+                    <option value="Tool Owner">Role: Owner</option>
+                    <option value="Shopkeeper">Role: Shopkeeper</option>
+                    <option value="Buyer">Role: Buyer</option>
+                    <option value="Admin">Role: Admin</option>
+                  </select>
+
+                  {/* Coins & XP Badge */}
+                  <div className="hidden sm:flex items-center gap-3 bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5">
+                    <div className="flex items-center gap-1">
+                      <span className="text-amber-500">🪙</span>
+                      <span className="text-xs font-bold text-slate-200">{user.coins}</span>
+                    </div>
+                    <div className="h-3 w-[1px] bg-slate-800"></div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-primary-500">⚡</span>
+                      <span className="text-xs font-bold text-slate-200">{user.xp} XP</span>
+                    </div>
+                    <div className="h-3 w-[1px] bg-slate-800"></div>
+                    <span className="text-[10px] bg-primary-500/20 text-primary-400 px-1.5 py-0.5 rounded font-bold uppercase">{user.badge}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </nav>
+
+          {/* Main Body Grid */}
+          <div className="flex-grow pt-28 pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
+            
+            {/* Tab: Landing (Home) */}
+            {activeTab === 'landing' && (
+              <div className="space-y-16 animate-fade-in">
+                {/* Hero section */}
+                <div className="relative overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-r from-dark-900 to-emerald-950/20 py-20 px-8 sm:px-16 flex flex-col md:flex-row items-center gap-12">
+                  <div className="flex-1 space-y-6">
+                    <div className="inline-flex items-center gap-2 bg-primary-500/10 border border-primary-500/20 rounded-full px-3 py-1 text-xs text-primary-400 font-semibold uppercase tracking-wider">
+                      🌱 Startup AgriTech Ecosystem
+                    </div>
+                    <h1 className="text-4xl sm:text-6xl font-bold tracking-tight text-white leading-tight">
+                      {t('heroTitle')}
+                    </h1>
+                    <p className="text-base sm:text-lg text-slate-300 max-w-xl leading-relaxed">
+                      {t('heroSubtitle')}
+                    </p>
+                    
+                    {/* Search and Voice search Bar */}
+                    <div className="flex flex-col gap-2 max-w-md">
+                      <div className="relative flex items-center">
+                        <input
+                          type="text"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          placeholder={t('searchPlaceholder')}
+                          className="w-full bg-slate-900 border border-slate-800 rounded-xl py-3.5 pl-4 pr-12 text-sm focus:outline-none focus:border-primary-500 placeholder-slate-500"
+                        />
+                        <button
+                          onClick={startVoiceSearch}
+                          className={`absolute right-3 p-2 rounded-lg transition-colors ${isRecording ? 'bg-red-500/20 text-red-500 animate-pulse' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                          title="Search with Voice"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                          </svg>
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-slate-400">{t('voiceSearchTip')}</p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-4 pt-4">
+                      <button onClick={() => setActiveTab('tools')} className="bg-primary-600 hover:bg-primary-700 text-white font-medium py-3 px-8 rounded-xl transition-colors shadow-lg hover:shadow-primary-500/10">{t('rentNow')}</button>
+                      <button onClick={() => setActiveTab('shop')} className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium py-3 px-8 rounded-xl border border-slate-700 transition-colors">{t('buyNow')}</button>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 w-full relative">
+                    <img src="https://images.unsplash.com/photo-1592982537447-7440770cbfc9?auto=format&fit=crop&q=80&w=600" alt="Farming Equipment" className="w-full h-80 object-cover rounded-2xl border border-slate-800 shadow-2xl" />
+                    <div className="absolute -bottom-6 -left-6 bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center gap-3 shadow-lg">
+                      <span className="text-3xl">🚜</span>
+                      <div>
+                        <p className="text-xs text-slate-400">Available nearby</p>
+                        <p className="text-sm font-bold text-white">42 Active Machines</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Features Highlights Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                  <div className="glass-card p-8 rounded-2xl space-y-4">
+                    <span className="text-4xl">🚜</span>
+                    <h3 className="text-lg font-bold text-white">Shareable Machinery</h3>
+                    <p className="text-sm text-slate-400 leading-relaxed">Rent high-capacity tractors, seeders, and water pumps. Search within a 5km to 50km radius with live geolocation maps.</p>
+                  </div>
+                  <div className="glass-card p-8 rounded-2xl space-y-4">
+                    <span className="text-4xl">🌾</span>
+                    <h3 className="text-lg font-bold text-white">Direct Marketplace</h3>
+                    <p className="text-sm text-slate-400 leading-relaxed">Sell grains, vegetables, and crops directly to bulk buyers. Shopkeepers manage seed inventories and checkouts.</p>
+                  </div>
+                  <div className="glass-card p-8 rounded-2xl space-y-4">
+                    <span className="text-4xl">🧠</span>
+                    <h3 className="text-lg font-bold text-white">AI Farming Intelligence</h3>
+                    <p className="text-sm text-slate-400 leading-relaxed">Predict future crop mandi prices, diagnose leaf sickness via diagnostic scanners, and seek irrigation advisories.</p>
+                  </div>
+                </div>
+
+                {/* Nearby Machinery Discovery Map Section */}
+                <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-6">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                      <h2 className="text-xl font-bold text-white">{t('nearbyEquip')}</h2>
+                      <p className="text-xs text-slate-400">Interactive Leaflet visualization mapping machines in your immediate district.</p>
+                    </div>
+                    <div className="flex items-center gap-4 bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5">
+                      <label className="text-xs text-slate-400 font-semibold">Distance Radius:</label>
+                      <input
+                        type="range" min="5" max="50" step="5"
+                        value={distanceFilter}
+                        onChange={(e) => setDistanceFilter(e.target.value)}
+                        className="h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-primary-500"
+                      />
+                      <span className="text-xs font-bold text-primary-400">{distanceFilter} km</span>
+                    </div>
+                  </div>
+
+                  {/* Leaflet Mount Container */}
+                  <div className="h-96 rounded-xl overflow-hidden relative border border-slate-800">
+                    <div ref={mapContainerRef} className="h-full w-full"></div>
+                  </div>
+                </div>
+
+                {/* Weather Alerts Intelligence Module Banner */}
+                <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6">
+                  <div className="flex items-center gap-4">
+                    <span className="text-3xl animate-bounce-slow">🚨</span>
+                    <div>
+                      <h4 className="text-sm font-bold text-red-400">Weather Alert: Scattered Rain Expected Tomorrow (Ludhiana District)</h4>
+                      <p className="text-xs text-slate-300 mt-1">Expected rain probability: 85%. Irrigation is NOT recommended for the next 24 hours. Move harvested grains to covered storage areas immediately.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-xs">
+                    <span className="text-slate-400">Wind:</span> <span className="font-bold text-white">18 km/h</span>
+                    <span className="text-slate-800">|</span>
+                    <span className="text-slate-400">Humidity:</span> <span className="font-bold text-white">72%</span>
+                  </div>
+                </div>
+
+                {/* How It Works Section */}
+                <div className="space-y-8">
+                  <div className="text-center space-y-2">
+                    <h2 className="text-2xl font-bold text-white">How AgriRent Hub Empowers You</h2>
+                    <p className="text-xs text-slate-400">A step-by-step startup model built for cooperative farming growth.</p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800 text-center space-y-3">
+                      <span className="h-10 w-10 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold mx-auto">1</span>
+                      <h4 className="text-sm font-bold text-white">Submit KYC</h4>
+                      <p className="text-xs text-slate-400">Verify your Aadhaar, Owner or Shop license details instantly to unlock secure listings.</p>
+                    </div>
+                    <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800 text-center space-y-3">
+                      <span className="h-10 w-10 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold mx-auto">2</span>
+                      <h4 className="text-sm font-bold text-white">Find Machinery / Seeds</h4>
+                      <p className="text-xs text-slate-400">Search tools nearby within 5-50km. Buy high-yield seeds directly from local shopkeepers.</p>
+                    </div>
+                    <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800 text-center space-y-3">
+                      <span className="h-10 w-10 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold mx-auto">3</span>
+                      <h4 className="text-sm font-bold text-white">Atomic Booking</h4>
+                      <p className="text-xs text-slate-400">Pick dates on the booking calendar. Atomic checks prevent double booking instantly.</p>
+                    </div>
+                    <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800 text-center space-y-3">
+                      <span className="h-10 w-10 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold mx-auto">4</span>
+                      <h4 className="text-sm font-bold text-white">Earn Rewards</h4>
+                      <p className="text-xs text-slate-400">Unlock Agri Coins and Level badges by participating in Daily Quizzes and crop diagnostics.</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Farmer Success Stories Section */}
+                <div className="space-y-8">
+                  <div className="text-center space-y-2">
+                    <h2 className="text-2xl font-bold text-white">Farmer Success Stories</h2>
+                    <p className="text-xs text-slate-400 font-medium">Read how direct-to-farm sharing optimization is boosting regional revenues.</p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="glass-card overflow-hidden rounded-2xl flex flex-col sm:flex-row">
+                      <img src="https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&q=80&w=250" className="w-full sm:w-44 h-44 object-cover" />
+                      <div className="p-6 flex flex-col justify-between">
+                        <p className="text-xs text-slate-400 italic">"AgriRent Hub helped me rent a high-power rotavator for my Rabi wheat crop fields at half the market price. The booking calendar is so simple!"</p>
+                        <div className="mt-4">
+                          <p className="text-xs font-bold text-white">Baldev Singh, Ludhiana</p>
+                          <p className="text-[10px] text-emerald-400 font-semibold">Wheat Farmer (+450 Agri Coins)</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="glass-card overflow-hidden rounded-2xl flex flex-col sm:flex-row">
+                      <img src="https://images.unsplash.com/photo-1595273670150-db0a3e39843c?auto=format&fit=crop&q=80&w=250" className="w-full sm:w-44 h-44 object-cover" />
+                      <div className="p-6 flex flex-col justify-between">
+                        <p className="text-xs text-slate-400 italic">"I had a tractor sitting idle for 20 days a month. Listing it on this platform has brought a steady secondary income. Best AgriTech startup!"</p>
+                        <div className="mt-4">
+                          <p className="text-xs font-bold text-white">Karan Johal, Patiala</p>
+                          <p className="text-[10px] text-emerald-400 font-semibold">Tool Owner (+1,200 XP earned)</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Testimonials Grid */}
+                <div className="space-y-8">
+                  <div className="text-center space-y-2">
+                    <h2 className="text-2xl font-bold text-white">What Our Partners Say</h2>
+                    <p className="text-xs text-slate-400">Feedback from shopkeepers, buyers, and local farmers.</p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 space-y-3">
+                      <div className="flex items-center gap-1 text-amber-500 text-xs">⭐⭐⭐⭐⭐</div>
+                      <p className="text-xs text-slate-300">"Being a shopkeeper, managing seed and fertilizer stocks via the dashboard has saved hours of manual paperwork. Direct online payouts are verified instantly."</p>
+                      <p className="text-[10px] text-slate-400 font-bold">- Ramesh Agri-Inputs, Shopkeeper</p>
+                    </div>
+                    <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 space-y-3">
+                      <div className="flex items-center gap-1 text-amber-500 text-xs">⭐⭐⭐⭐⭐</div>
+                      <p className="text-xs text-slate-300">"The leaf disease diagnosis tool accurately identified Rust blight on my soybeans. The suggested Propiconazole spray saved my entire yield."</p>
+                      <p className="text-[10px] text-slate-400 font-bold">- Satnam Hooda, Farmer</p>
+                    </div>
+                    <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 space-y-3">
+                      <div className="flex items-center gap-1 text-amber-500 text-xs">⭐⭐⭐⭐⭐</div>
+                      <p className="text-xs text-slate-300">"Buying harvest crops directly from verified farmers without middlemen allows us to source grains at highly optimized prices. Outstanding platform."</p>
+                      <p className="text-[10px] text-slate-400 font-bold">- FoodCorp India, Bulk Buyer</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* FAQ Accordion Grid */}
+                <div className="space-y-8">
+                  <div className="text-center space-y-2">
+                    <h2 className="text-2xl font-bold text-white">Frequently Asked Questions</h2>
+                    <p className="text-xs text-slate-400 font-medium">Everything you need to know about bookings, KYC, and security.</p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto text-xs">
+                    <div className="bg-slate-900 p-5 rounded-xl border border-slate-800 space-y-2">
+                      <h4 className="font-bold text-white">How does the calendar prevent double booking?</h4>
+                      <p className="text-slate-400 leading-relaxed">Our platform uses atomic date range validation. If a tractor has a pending or approved booking on overlapping dates, any new request on those dates is rejected immediately.</p>
+                    </div>
+                    <div className="bg-slate-900 p-5 rounded-xl border border-slate-800 space-y-2">
+                      <h4 className="font-bold text-white">Why is KYC verification required?</h4>
+                      <p className="text-slate-400 leading-relaxed">To ensure security and build trust. Submitting your Aadhaar and shop licenses confirms your farmer/business identity and unlocks direct trading permissions.</p>
+                    </div>
+                    <div className="bg-slate-900 p-5 rounded-xl border border-slate-800 space-y-2">
+                      <h4 className="font-bold text-white">How do I earn Agri Coins?</h4>
+                      <p className="text-slate-400 leading-relaxed">By participating in daily quizzes, solving diagnosis challenges, or listing harvests. These coins can be redeemed for discounts on seeds and fertilizers.</p>
+                    </div>
+                    <div className="bg-slate-900 p-5 rounded-xl border border-slate-800 space-y-2">
+                      <h4 className="font-bold text-white">How does Leaflet radius search calculate distances?</h4>
+                      <p className="text-slate-400 leading-relaxed">The search uses the Haversine formula based on your browser geolocation. It filters equipment listings and plots the distance and estimated transport travel times.</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Blog Section */}
+                <div className="space-y-8">
+                  <div className="text-center space-y-2">
+                    <h2 className="text-2xl font-bold text-white">Agricultural Advice & Insights</h2>
+                    <p className="text-xs text-slate-400">Latest expert blog articles on modern crop management.</p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="glass-card rounded-2xl overflow-hidden flex flex-col justify-between">
+                      <img src="https://images.unsplash.com/photo-1592982537447-7440770cbfc9?auto=format&fit=crop&q=80&w=250" className="h-40 w-full object-cover" />
+                      <div className="p-6 space-y-3">
+                        <span className="text-[10px] text-primary-400 font-bold uppercase tracking-wider">Agronomy Guide</span>
+                        <h4 className="text-sm font-bold text-white leading-snug">Optimizing Rabi Wheat Yields: Seed Selection & Nitrogen Ratios</h4>
+                        <p className="text-xs text-slate-400 leading-relaxed">Learn how applying balanced NPK fertilizers and certified HD-3086 seed varieties doubles harvest sizes.</p>
+                      </div>
+                    </div>
+                    <div className="glass-card rounded-2xl overflow-hidden flex flex-col justify-between">
+                      <img src="https://images.unsplash.com/photo-1536304997881-a372c179924b?auto=format&fit=crop&q=80&w=250" className="h-40 w-full object-cover" />
+                      <div className="p-6 space-y-3">
+                        <span className="text-[10px] text-primary-400 font-bold uppercase tracking-wider">Tech Corner</span>
+                        <h4 className="text-sm font-bold text-white leading-snug">Drip Irrigation vs Flood: Water Conservation in Dry Seasons</h4>
+                        <p className="text-xs text-slate-400 leading-relaxed">An analytical report explaining how precision drip networks save up to 40% more groundwater in summer.</p>
+                      </div>
+                    </div>
+                    <div className="glass-card rounded-2xl overflow-hidden flex flex-col justify-between">
+                      <img src="https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&q=80&w=250" className="h-40 w-full object-cover" />
+                      <div className="p-6 space-y-3">
+                        <span className="text-[10px] text-primary-400 font-bold uppercase tracking-wider">Market Analysis</span>
+                        <h4 className="text-sm font-bold text-white leading-snug">Crop Mandi Pricing Forecast: Rabi Wheat Trends 2026</h4>
+                        <p className="text-xs text-slate-400 leading-relaxed">Understanding supply thresholds, export options, and state district linear prediction models.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* Tab: Tool Rental Marketplace */}
+            {activeTab === 'tools' && (
+              <div className="space-y-8 animate-fade-in">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-2xl font-bold text-white">Farm Equipment Rentals</h2>
+                    <p className="text-xs text-slate-400">Discover top-spec agriculture machinery listed nearby.</p>
+                  </div>
+
+                  {/* Category filters */}
+                  <div className="flex flex-wrap gap-2">
+                    {['All', 'Tractor', 'Rotavator', 'Seeder', 'Harvester'].map(cat => (
+                      <button
+                        key={cat}
+                        onClick={() => setSelectedCategory(cat)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${selectedCategory === cat ? 'bg-primary-500 border-primary-500 text-white' : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'}`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  {/* Left Column: Listings */}
+                  <div className="lg:col-span-2 space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {initialTools
+                        .filter(tool => selectedCategory === 'All' || tool.category === selectedCategory)
+                        .map(tool => {
+                          const isComparing = comparisonList.some(item => item.id === tool.id);
+                          return (
+                            <div key={tool.id} className="glass-card overflow-hidden rounded-2xl flex flex-col h-full">
+                              <img src={tool.images} alt={tool.name} className="h-44 w-full object-cover" />
+                              <div className="p-6 flex-grow flex flex-col justify-between space-y-4">
+                                <div className="space-y-1">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[10px] bg-primary-500/20 text-primary-400 font-bold uppercase tracking-wider px-2 py-0.5 rounded">{tool.category}</span>
+                                    <div className="flex items-center gap-1 text-xs text-amber-500 font-bold">⭐ {tool.rating}</div>
+                                  </div>
+                                  <h3 className="text-lg font-bold text-white">{tool.name}</h3>
+                                  <p className="text-xs text-slate-400">Listed by {tool.owner}</p>
+                                </div>
+
+                                <div className="flex items-center justify-between bg-slate-900/50 p-3 rounded-xl border border-slate-800">
+                                  <div>
+                                    <p className="text-[10px] text-slate-400 uppercase tracking-wider">Daily Rate</p>
+                                    <p className="text-sm font-extrabold text-primary-400">₹{tool.rentRates.daily}</p>
+                                  </div>
+                                  <div className="h-6 w-[1px] bg-slate-800"></div>
+                                  <div>
+                                    <p className="text-[10px] text-slate-400 uppercase tracking-wider">Weekly</p>
+                                    <p className="text-xs font-semibold text-slate-300">₹{tool.rentRates.weekly}</p>
+                                  </div>
+                                </div>
+
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => setSelectedTool(tool)}
+                                    className="flex-grow bg-primary-600 hover:bg-primary-700 text-white font-medium py-2.5 rounded-xl text-xs transition-colors shadow-lg shadow-primary-500/10"
+                                  >
+                                    Book Now
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      if (isComparing) {
+                                        setComparisonList(comparisonList.filter(item => item.id !== tool.id));
+                                      } else {
+                                        if (comparisonList.length >= 2) {
+                                          alert("Max 2 tools can be compared at once.");
+                                          return;
+                                        }
+                                        setComparisonList([...comparisonList, tool]);
+                                      }
+                                    }}
+                                    className={`px-3 py-2.5 rounded-xl text-xs font-semibold border transition-all ${isComparing ? 'bg-amber-500 border-amber-500 text-white' : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800'}`}
+                                    title="Compare specs side-by-side"
+                                  >
+                                    ⚖️ {isComparing ? 'Comparing' : 'Compare'}
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+
+                    {/* Tool Comparison Matrix Side-by-Side */}
+                    {comparisonList.length > 0 && (
+                      <div className="glass-panel p-6 rounded-2xl border border-slate-850 space-y-4 animate-slide-up">
+                        <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                          <h3 className="text-base font-bold text-white flex items-center gap-2">
+                            <span>⚖️</span> Tool Specification Comparison
+                          </h3>
+                          <button onClick={() => setComparisonList([])} className="text-slate-400 hover:text-white text-xs">Clear All</button>
+                        </div>
+                        <div className="grid grid-cols-3 gap-4 text-xs">
+                          {/* Attributes Names */}
+                          <div className="space-y-4 font-semibold text-slate-400 pt-16">
+                            <div>Category</div>
+                            <div>Daily Rate</div>
+                            <div>Weekly Rate</div>
+                            <div>Monthly Rate</div>
+                            <div>Power Rating</div>
+                            <div>Certified Owner</div>
+                            <div>Average Rating</div>
+                          </div>
+                          
+                          {/* Compared Items columns */}
+                          {comparisonList.map((item, idx) => (
+                            <div key={idx} className="bg-slate-900/50 p-4 rounded-xl border border-slate-800 text-center space-y-4">
+                              <p className="font-bold text-emerald-400 truncate">{item.name}</p>
+                              <div>{item.category}</div>
+                              <div className="font-extrabold text-white">₹{item.rentRates.daily}</div>
+                              <div>₹{item.rentRates.weekly}</div>
+                              <div>₹{item.rentRates.monthly}</div>
+                              <div className="text-slate-300">{item.power || 'N/A'}</div>
+                              <div className="text-slate-400 truncate">{item.owner}</div>
+                              <div className="text-amber-500 font-bold">⭐ {item.rating}</div>
+                            </div>
+                          ))}
+
+                          {comparisonList.length === 1 && (
+                            <div className="border border-dashed border-slate-800 rounded-xl flex items-center justify-center text-slate-500">
+                              Select another equipment card to compare side-by-side
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right Column: Airbnb Booking calendar overlay */}
+                  <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-6 h-fit">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">📅</span>
+                        <h3 className="text-lg font-bold text-white">Booking Calendar</h3>
+                      </div>
+                      <p className="text-xs text-slate-400 font-medium">Select dates for renting: <span className="text-primary-400 font-bold">{selectedTool.name}</span></p>
+                    </div>
+
+                    <form onSubmit={handleBooking} className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-400 uppercase mb-2">Start Rental Date</label>
+                        <input
+                          type="date"
+                          value={bookingStartDate}
+                          onChange={(e) => setBookingStartDate(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-800 rounded-xl py-3 px-4 text-xs focus:outline-none focus:border-primary-500 text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-400 uppercase mb-2">End Date</label>
+                        <input
+                          type="date"
+                          value={bookingEndDate}
+                          onChange={(e) => setBookingEndDate(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-800 rounded-xl py-3 px-4 text-xs focus:outline-none focus:border-primary-500 text-white"
+                        />
+                      </div>
+
+                      {/* Airbnb Calendar Colors indicator */}
+                      <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-2.5">
+                        <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Calendar Status Legend</p>
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-1.5">
+                            <span className="h-3 w-3 bg-emerald-500 rounded-full"></span>
+                            <span className="text-[10px] text-slate-300">Available</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="h-3 w-3 bg-amber-500 rounded-full"></span>
+                            <span className="text-[10px] text-slate-300">Pending Request</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="h-3 w-3 bg-red-500 rounded-full"></span>
+                            <span className="text-[10px] text-slate-300">Booked (Blocked)</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="w-full bg-primary-600 hover:bg-primary-700 text-white font-medium py-3.5 rounded-xl text-xs transition-colors shadow-lg"
+                      >
+                        Submit Booking Request (Razorpay Pay)
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Tab: Seeds & Fertilizers Shop */}
+            {activeTab === 'shop' && (
+              <div className="space-y-12 animate-fade-in">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold text-white">Seed & Fertilizer Marketplace</h2>
+                    <p className="text-xs text-slate-400">Buy high-yielding certified organic seeds and soil treatments.</p>
+                  </div>
+                  
+                  {/* Shopping Cart Summary */}
+                  <div className="relative">
+                    <button className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 flex items-center gap-2 text-xs font-semibold">
+                      🛒 Cart ({cart.length})
+                    </button>
+                    {cart.length > 0 && (
+                      <div className="absolute right-0 mt-2 w-72 bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl z-50 space-y-4">
+                        <p className="text-xs font-bold text-white">Checkout Cart</p>
+                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                          {cart.map((c, i) => (
+                            <div key={i} className="flex justify-between items-center text-xs">
+                              <span className="text-slate-300">{c.name}</span>
+                              <span className="text-primary-400 font-bold">₹{c.price}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="h-[1px] bg-slate-800"></div>
+                        <div className="flex justify-between items-center text-xs font-bold">
+                          <span>Total:</span>
+                          <span>₹{cart.reduce((acc, c) => acc + c.price, 0)}</span>
+                        </div>
+                        <button onClick={handleCheckout} className="w-full bg-primary-600 hover:bg-primary-700 text-white text-xs py-2 rounded-lg font-medium transition-colors">
+                          Checkout via Razorpay
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <h3 className="text-lg font-bold text-white border-b border-slate-800 pb-2">Seeds Marketplace</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {initialSeeds.map(seed => (
+                      <div key={seed.id} className="glass-card rounded-2xl overflow-hidden flex flex-col justify-between">
+                        <img src={seed.images} alt={seed.name} className="h-40 w-full object-cover" />
+                        <div className="p-6 space-y-4">
+                          <div>
+                            <span className="text-[10px] bg-primary-500/20 text-primary-400 font-bold px-2 py-0.5 rounded">{seed.category}</span>
+                            <h4 className="text-base font-bold text-white mt-2">{seed.name}</h4>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <p className="text-[10px] text-slate-400">Price per Bag</p>
+                              <p className="text-sm font-extrabold text-primary-400">₹{seed.price}</p>
+                            </div>
+                            <button onClick={() => addToCart(seed)} className="bg-primary-600/20 border border-primary-500/30 text-primary-400 hover:bg-primary-600 hover:text-white px-3 py-1.5 rounded-lg text-xs transition-all">
+                              + Add to Cart
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <h3 className="text-lg font-bold text-white border-b border-slate-800 pb-2">Fertilizers Marketplace</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {initialFertilizers.map(fert => (
+                      <div key={fert.id} className="glass-card rounded-2xl overflow-hidden flex flex-col justify-between">
+                        <img src={fert.images} alt={fert.name} className="h-40 w-full object-cover" />
+                        <div className="p-6 space-y-4">
+                          <div>
+                            <span className="text-[10px] bg-primary-500/20 text-primary-400 font-bold px-2 py-0.5 rounded">{fert.category}</span>
+                            <h4 className="text-base font-bold text-white mt-2">{fert.name}</h4>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <p className="text-[10px] text-slate-400">Price per Bag</p>
+                              <p className="text-sm font-extrabold text-primary-400">₹{fert.price}</p>
+                            </div>
+                            <button onClick={() => addToCart(fert)} className="bg-primary-600/20 border border-primary-500/30 text-primary-400 hover:bg-primary-600 hover:text-white px-3 py-1.5 rounded-lg text-xs transition-all">
+                              + Add to Cart
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Tab: Crop Marketplace (Farmer Sell) */}
+            {activeTab === 'crops' && (
+              <div className="space-y-8 animate-fade-in">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  
+                  {/* Sell Form (Farmer role only) */}
+                  <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-6 h-fit">
+                    <div>
+                      <h3 className="text-lg font-bold text-white">Post Crop Listing</h3>
+                      <p className="text-xs text-slate-400">Post details of your bumper harvest to buyers directly.</p>
+                    </div>
+
+                    <form onSubmit={handleAddCrop} className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-400 uppercase mb-2">Crop Name</label>
+                        <input
+                          type="text" required placeholder="e.g. Organic Basmati Rice"
+                          value={newCropName} onChange={(e) => setNewCropName(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-800 rounded-xl py-3 px-4 text-xs focus:outline-none focus:border-primary-500"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-400 uppercase mb-2">Unit Price (₹)</label>
+                          <input
+                            type="number" required placeholder="Price"
+                            value={newCropPrice} onChange={(e) => setNewCropPrice(e.target.value)}
+                            className="w-full bg-slate-900 border border-slate-800 rounded-xl py-3 px-4 text-xs focus:outline-none focus:border-primary-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-400 uppercase mb-2">Quantity</label>
+                          <input
+                            type="number" required placeholder="e.g. 50"
+                            value={newCropQuantity} onChange={(e) => setNewCropQuantity(e.target.value)}
+                            className="w-full bg-slate-900 border border-slate-800 rounded-xl py-3 px-4 text-xs focus:outline-none focus:border-primary-500"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-400 uppercase mb-2">Unit</label>
+                          <select
+                            value={newCropUnit} onChange={(e) => setNewCropUnit(e.target.value)}
+                            className="w-full bg-slate-900 border border-slate-800 rounded-xl py-3 px-4 text-xs focus:outline-none focus:border-primary-500 text-slate-300"
+                          >
+                            <option value="kg">kg</option>
+                            <option value="Quintal">Quintal</option>
+                            <option value="Ton">Ton</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-400 uppercase mb-2">Location</label>
+                          <input
+                            type="text" placeholder="e.g. Ludhiana, Punjab"
+                            value={newCropLocation} onChange={(e) => setNewCropLocation(e.target.value)}
+                            className="w-full bg-slate-900 border border-slate-800 rounded-xl py-3 px-4 text-xs focus:outline-none focus:border-primary-500"
+                          />
+                        </div>
+                      </div>
+                      
+                      <button type="submit" className="w-full bg-primary-600 hover:bg-primary-700 text-white font-medium py-3 rounded-xl text-xs transition-colors shadow-lg">
+                        Submit Listing (+20 XP)
+                      </button>
+                    </form>
+                  </div>
+
+                  {/* Listings Screen */}
+                  <div className="lg:col-span-2 space-y-6">
+                    <div>
+                      <h3 className="text-xl font-bold text-white">Active Harvest Sales Listings</h3>
+                      <p className="text-xs text-slate-400">Buyers can view crop batches and place quick orders.</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {initialCrops.map(crop => (
+                        <div key={crop.id} className="glass-card rounded-2xl overflow-hidden flex flex-col justify-between">
+                          <img src={crop.images} alt={crop.cropName} className="h-40 w-full object-cover" />
+                          <div className="p-6 space-y-4">
+                            <div>
+                              <h4 className="text-base font-bold text-white">{crop.cropName}</h4>
+                              <p className="text-xs text-slate-400">Harvested by {crop.farmer}</p>
+                              <p className="text-xs text-slate-400 flex items-center gap-1 mt-1">📍 {crop.location}</p>
+                            </div>
+
+                            <div className="flex items-center justify-between bg-slate-900/50 p-3 rounded-xl border border-slate-800 text-xs">
+                              <div>
+                                <p className="text-[10px] text-slate-400">Total Batch</p>
+                                <p className="font-bold text-slate-200">{crop.quantity} {crop.unit}</p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-slate-400">Price per unit</p>
+                                <p className="font-bold text-primary-400">₹{crop.price}/{crop.unit}</p>
+                              </div>
+                            </div>
+
+                            <button onClick={() => alert(`Contacting ${crop.farmer} about the crop batch. Initiating room chat...`)} className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs py-2 rounded-lg font-medium transition-colors">
+                              Contact Farmer / Purchase
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            )}
+
+            {/* Tab: AI Assistant (Advisory Chatbot) */}
+            {activeTab === 'ai' && (
+              <div className="space-y-6 max-w-3xl mx-auto animate-fade-in">
+                <div className="text-center space-y-2">
+                  <h2 className="text-2xl font-bold text-white">{t('aiAssistant')}</h2>
+                  <p className="text-xs text-slate-400">AI Agronomist providing weather forecasts, irrigation guides, and seed reviews.</p>
+                </div>
+
+                <div className="glass-panel rounded-2xl border border-slate-800 overflow-hidden flex flex-col h-[500px]">
+                  {/* Chat Area */}
+                  <div className="flex-grow p-6 overflow-y-auto space-y-4 scrollbar-hidden">
+                    {aiAdvisorLogs.map((log, i) => (
+                      <div key={i} className={`flex ${log.sender === 'Me' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-md rounded-2xl p-4 text-xs leading-relaxed ${log.sender === 'Me' ? 'bg-primary-600 text-white rounded-tr-none' : 'bg-slate-900 border border-slate-800 text-slate-300 rounded-tl-none'}`}>
+                          <p className="font-semibold text-[10px] uppercase text-emerald-400 tracking-wider mb-1">{log.sender}</p>
+                          <p>{log.text}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Input form */}
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!aiAdvisorMessage.trim()) return;
+                    const log = { sender: 'Me', text: aiAdvisorMessage };
+                    setAiAdvisorLogs([...aiAdvisorLogs, log]);
+                    
+                    // Simple NLP advisor response mock
+                    const userMsg = aiAdvisorMessage.toLowerCase();
+                    let response = 'Hello! I am your AI Agronomist. Ask me about crop yields, diseases, weather notifications or rentals.';
+                    if (userMsg.includes('rain') || userMsg.includes('weather') || userMsg.includes('बारिश')) {
+                      response = 'Scattered rain predicted tomorrow. We suggest postponing chemical fertilizer spraying today.';
+                    } else if (userMsg.includes('crop') || userMsg.includes('wheat') || userMsg.includes('धान')) {
+                      response = 'For Rabi crop cycles, ensure clayey loam soils, seed treat baselines with Trichoderma, and irrigate once in 15 days.';
+                    }
+
+                    setTimeout(() => {
+                      setAiAdvisorLogs(prev => [...prev, { sender: 'AI Assistant', text: response }]);
+                      speakText(response);
+                    }, 1000);
+
+                    setAiAdvisorMessage('');
+                  }} className="p-4 bg-slate-900 border-t border-slate-800 flex gap-4 items-center">
+                    <input
+                      type="text"
+                      value={aiAdvisorMessage}
+                      onChange={(e) => setAiAdvisorMessage(e.target.value)}
+                      placeholder="Ask AI: 'When should I irrigate wheat?' or 'धान बोने की विधि...'"
+                      className="flex-grow bg-slate-950 border border-slate-800 rounded-xl py-3 px-4 text-xs focus:outline-none focus:border-primary-500 text-white"
+                    />
+                    <button type="submit" className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-3 rounded-xl text-xs font-semibold transition-colors">
+                      Send
+                    </button>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {/* Tab: Disease Scanner */}
+            {activeTab === 'disease' && (
+              <div className="space-y-8 max-w-4xl mx-auto animate-fade-in">
+                <div className="text-center space-y-2">
+                  <h2 className="text-2xl font-bold text-white">{t('diseaseDetect')}</h2>
+                  <p className="text-xs text-slate-400 font-medium">Upload photos of crop leaves or choose mock images to diagnose fungal infections instantly.</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Left Column: Leaf Selector */}
+                  <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-6">
+                    <h3 className="text-base font-bold text-slate-200">Submit Leaf Diagnostic Specimen</h3>
+                    
+                    <div className="border-2 border-dashed border-slate-800 hover:border-primary-500 rounded-xl p-8 text-center transition-colors">
+                      <span className="text-4xl block mb-2">📸</span>
+                      <p className="text-xs text-slate-400 font-medium mb-4">Drag leaf snapshots here or use scanner simulator.</p>
+                      
+                      <div className="flex flex-col gap-2">
+                        <button onClick={() => runDiseaseScanner('healthy')} className="bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 text-xs py-2.5 rounded-lg transition-colors font-medium">
+                          Simulate Scanner: Healthy Leaf
+                        </button>
+                        <button onClick={() => runDiseaseScanner('rust')} className="bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 text-xs py-2.5 rounded-lg transition-colors font-medium">
+                          Simulate Scanner: Rust Blight Leaf
+                        </button>
+                        <button onClick={() => runDiseaseScanner('blast')} className="bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 text-xs py-2.5 rounded-lg transition-colors font-medium">
+                          Simulate Scanner: Blast Leaf
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Diagnostic results */}
+                  <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-6">
+                    <h3 className="text-base font-bold text-slate-200">Diagnosis Report</h3>
+
+                    {aiDiagnosisResult ? (
+                      <div className="space-y-4 animate-fade-in">
+                        <div className="flex justify-between items-center bg-slate-900 p-4 rounded-xl border border-slate-800">
+                          <div>
+                            <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Detected Condition</p>
+                            <p className="text-sm font-bold text-emerald-400">{aiDiagnosisResult.name}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[10px] text-slate-400 uppercase font-bold">Confidence</p>
+                            <p className="text-sm font-bold text-white">{aiDiagnosisResult.confidence}</p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold text-slate-400">Severity Metric</p>
+                          <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+                            <div className="h-full bg-red-500 rounded-full" style={{ width: aiDiagnosisResult.severity.includes('Severe') ? '60%' : aiDiagnosisResult.severity.includes('Moderate') ? '35%' : '0%' }}></div>
+                          </div>
+                          <p className="text-[10px] text-red-400 font-bold">{aiDiagnosisResult.severity}</p>
+                        </div>
+
+                        <div className="space-y-3 pt-2 text-xs">
+                          <div>
+                            <p className="font-bold text-slate-300">Pathogen Description</p>
+                            <p className="text-slate-400 leading-relaxed">{aiDiagnosisResult.explanation}</p>
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-300">Recommended Fungicide / Treatment</p>
+                            <p className="text-emerald-400 leading-relaxed">{aiDiagnosisResult.treatment}</p>
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-300">Preventive Crop Care</p>
+                            <p className="text-slate-400 leading-relaxed">{aiDiagnosisResult.prevention}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="h-48 flex items-center justify-center border border-slate-800 rounded-xl bg-slate-900/30">
+                        <p className="text-xs text-slate-500 font-medium">Please trigger a test scan on the left column.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Tab: Crop Price Prediction */}
+            {activeTab === 'price' && (
+              <div className="space-y-8 max-w-4xl mx-auto animate-fade-in">
+                <div className="text-center space-y-2">
+                  <h2 className="text-2xl font-bold text-white">{t('pricePredict')}</h2>
+                  <p className="text-xs text-slate-400">Predict future crop price trends based on historical Mandi analytics.</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                  {/* Inputs Column */}
+                  <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4 h-fit">
+                    <h3 className="text-base font-bold text-white border-b border-slate-800 pb-2">Analysis Scope</h3>
+                    <form onSubmit={handlePricePredict} className="space-y-4">
+                      <div>
+                        <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-2">Crop</label>
+                        <select
+                          value={priceInputs.crop} onChange={(e) => setPriceInputs({ ...priceInputs, crop: e.target.value })}
+                          className="w-full bg-slate-900 border border-slate-800 rounded-xl py-3 px-4 text-xs focus:outline-none focus:border-primary-500 text-slate-300"
+                        >
+                          <option value="Wheat">Wheat (गेंहू)</option>
+                          <option value="Rice">Rice (धान)</option>
+                          <option value="Corn">Corn (मक्का)</option>
+                          <option value="Soybean">Soybean (सोयाबीन)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-2">State</label>
+                        <select
+                          value={priceInputs.state} onChange={(e) => setPriceInputs({ ...priceInputs, state: e.target.value })}
+                          className="w-full bg-slate-900 border border-slate-800 rounded-xl py-3 px-4 text-xs focus:outline-none focus:border-primary-500 text-slate-300"
+                        >
+                          <option value="Punjab">Punjab</option>
+                          <option value="Haryana">Haryana</option>
+                          <option value="Uttar Pradesh">Uttar Pradesh</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-2">District</label>
+                        <input
+                          type="text" required value={priceInputs.district}
+                          onChange={(e) => setPriceInputs({ ...priceInputs, district: e.target.value })}
+                          className="w-full bg-slate-900 border border-slate-800 rounded-xl py-3 px-4 text-xs focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-2">Harvest Season</label>
+                        <select
+                          value={priceInputs.season} onChange={(e) => setPriceInputs({ ...priceInputs, season: e.target.value })}
+                          className="w-full bg-slate-900 border border-slate-800 rounded-xl py-3 px-4 text-xs focus:outline-none focus:border-primary-500 text-slate-300"
+                        >
+                          <option value="Rabi">Rabi (Winter)</option>
+                          <option value="Kharif">Kharif (Monsoon)</option>
+                          <option value="Zaid">Zaid (Summer)</option>
+                        </select>
+                      </div>
+                      <button type="submit" className="w-full bg-primary-600 hover:bg-primary-700 text-white font-medium py-3 rounded-xl text-xs transition-colors shadow-lg">
+                        Calculate Prediction
+                      </button>
+                    </form>
+                  </div>
+
+                  {/* Prediction Output Results */}
+                  <div className="md:col-span-2 glass-panel p-6 rounded-2xl border border-slate-800 space-y-6">
+                    <h3 className="text-base font-bold text-white border-b border-slate-800 pb-2">Prediction Analysis Report</h3>
+
+                    {pricePrediction ? (
+                      <div className="space-y-6 animate-fade-in">
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center">
+                            <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Predicted (Quintal)</p>
+                            <p className="text-lg font-bold text-emerald-400">₹{pricePrediction.expected}</p>
+                          </div>
+                          <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center">
+                            <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Minimum price</p>
+                            <p className="text-sm font-bold text-slate-300">₹{pricePrediction.min}</p>
+                          </div>
+                          <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center">
+                            <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Maximum price</p>
+                            <p className="text-sm font-bold text-slate-300">₹{pricePrediction.max}</p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 text-xs">
+                          <p className="font-bold text-slate-300">Advisory Suggestions:</p>
+                          <p className="text-slate-400 bg-slate-900/50 p-3 rounded-xl border border-slate-800 leading-relaxed">{pricePrediction.suggestedTime}</p>
+                        </div>
+
+                        {/* Visual Trend Chart Simulator using SVGs */}
+                        <div className="space-y-3">
+                          <p className="text-xs font-semibold text-slate-400">Expected Month-on-Month Trend</p>
+                          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 h-44 flex items-end justify-between px-6 pt-8">
+                            {[
+                              { m: 'Jan', v: '60%' },
+                              { m: 'Feb', v: '65%' },
+                              { m: 'Mar', v: '75%' },
+                              { m: 'Apr', v: '85%' },
+                              { m: 'May', v: '95%' },
+                              { m: 'Jun', v: '100%' }
+                            ].map((item, idx) => (
+                              <div key={idx} className="flex flex-col items-center gap-2 h-full justify-end">
+                                <div className="w-8 bg-gradient-to-t from-emerald-950 to-primary-600 rounded-t-md transition-all duration-500" style={{ height: item.v }}></div>
+                                <span className="text-[10px] text-slate-500 font-bold">{item.m}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="h-64 flex items-center justify-center border border-slate-800 rounded-xl bg-slate-900/30">
+                        <p className="text-xs text-slate-500 font-medium">Please submit agricultural inputs to calculate Mandi trends.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Tab: Daily Farming Quiz */}
+            {activeTab === 'quiz' && (
+              <div className="space-y-8 max-w-xl mx-auto animate-fade-in">
+                <div className="text-center space-y-2">
+                  <h2 className="text-2xl font-bold text-white">Daily Agri Quiz</h2>
+                  <p className="text-xs text-slate-400">Test your agricultural knowledge and earn XP and Agri Coins.</p>
+                </div>
+
+                <div className="glass-panel p-8 rounded-2xl border border-slate-800">
+                  {!quizFinished ? (
+                    <div className="space-y-6">
+                      <div className="flex justify-between items-center text-xs text-slate-400 border-b border-slate-800 pb-3">
+                        <span>Question {quizIndex + 1} of {quizQuestions.length}</span>
+                        <span>Score: {quizScore}</span>
+                      </div>
+                      
+                      <h3 className="text-base font-bold text-white leading-relaxed">{quizQuestions[quizIndex].q}</h3>
+
+                      <div className="space-y-3">
+                        {quizQuestions[quizIndex].opts.map((opt, i) => (
+                          <button
+                            key={i}
+                            onClick={() => submitQuizOption(opt)}
+                            className={`w-full text-left p-4 rounded-xl text-xs font-semibold border transition-all ${selectedOption === opt ? 'bg-primary-500 border-primary-500 text-white' : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-800'}`}
+                          >
+                            {opt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center space-y-6 py-6">
+                      <span className="text-5xl block">🏆</span>
+                      <h3 className="text-xl font-bold text-white">Quiz Completed!</h3>
+                      <p className="text-xs text-slate-400">You scored {quizScore} out of {quizQuestions.length} correct answers.</p>
+                      
+                      <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 inline-block text-left text-xs space-y-2">
+                        <p className="text-slate-300">🪙 Earned: <span className="text-amber-400 font-bold">+{quizScore * 10 + 10} Agri Coins</span></p>
+                        <p className="text-slate-300">⚡ XP Earned: <span className="text-primary-400 font-bold">+{quizScore * 20 + 20} XP Points</span></p>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          setQuizIndex(0);
+                          setQuizScore(0);
+                          setQuizFinished(false);
+                          setSelectedOption(null);
+                        }}
+                        className="block w-full bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold py-3 rounded-xl transition-colors"
+                      >
+                        Retake Quiz
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Tab: Chat */}
+            {activeTab === 'chat' && (
+              <div className="space-y-6 max-w-4xl mx-auto animate-fade-in">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                  {/* Left Column: Direct Chats List */}
+                  <div className="glass-panel rounded-2xl border border-slate-800 overflow-hidden h-[450px]">
+                    <div className="p-4 border-b border-slate-800 bg-slate-900/50">
+                      <p className="text-xs font-bold text-white">Direct Contacts</p>
+                    </div>
+                    <div className="divide-y divide-slate-800">
+                      <button className="w-full text-left p-4 hover:bg-slate-900/50 transition-colors flex items-center gap-3 bg-primary-500/5">
+                        <span className="h-8 w-8 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold text-xs">RK</span>
+                        <div>
+                          <p className="text-xs font-bold text-white">Rajesh Kumar (Owner)</p>
+                          <p className="text-[10px] text-slate-400">Online</p>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Chat Box */}
+                  <div className="md:col-span-2 glass-panel rounded-2xl border border-slate-800 overflow-hidden flex flex-col h-[450px]">
+                    {/* Header */}
+                    <div className="p-4 border-b border-slate-800 bg-slate-900/50 flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <span className="h-6 w-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs">RK</span>
+                        <p className="text-xs font-bold text-white">Rajesh Kumar (Owner)</p>
+                      </div>
+                      <span className="text-[10px] bg-primary-500/10 text-primary-400 px-2 py-0.5 rounded font-bold">Mahindra Tractor</span>
+                    </div>
+
+                    {/* Messages Body */}
+                    <div className="flex-grow p-4 overflow-y-auto space-y-4 scrollbar-hidden">
+                      {chatLog.map((chat, idx) => (
+                        <div key={idx} className={`flex ${chat.sender === 'Me' ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`max-w-xs rounded-2xl p-3 text-xs ${chat.sender === 'Me' ? 'bg-primary-600 text-white rounded-tr-none' : 'bg-slate-900 border border-slate-800 text-slate-300 rounded-tl-none'}`}>
+                            {chat.voiceNote ? (
+                              <div className="flex items-center gap-2">
+                                <span className="text-base">🎙️</span>
+                                <div className="flex gap-0.5 items-center">
+                                  <span className="h-4 w-1 bg-white rounded-full voice-bar"></span>
+                                  <span className="h-5 w-1 bg-white rounded-full voice-bar" style={{ animationDelay: '0.2s' }}></span>
+                                  <span className="h-3 w-1 bg-white rounded-full voice-bar" style={{ animationDelay: '0.4s' }}></span>
+                                </div>
+                                <span className="text-[10px] text-slate-200">Voice Note (0:08s)</span>
+                              </div>
+                            ) : (
+                              <p>{chat.message}</p>
+                            )}
+                            <p className="text-[8px] text-slate-400 text-right mt-1">{chat.time}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Chat footer input */}
+                    <form onSubmit={sendChatMessage} className="p-3 bg-slate-900 border-t border-slate-800 flex gap-2 items-center">
+                      <button type="button" onClick={sendVoiceNote} className="p-2 bg-slate-850 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs" title="Send Voice Note">
+                        🎙️
+                      </button>
+                      <input
+                        type="text"
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        placeholder="Write a message..."
+                        className="flex-grow bg-slate-950 border border-slate-800 rounded-lg py-2 px-3 text-xs focus:outline-none focus:border-primary-500"
+                      />
+                      <button type="submit" className="bg-primary-600 hover:bg-primary-700 text-white px-3 py-2 rounded-lg text-xs font-semibold">
+                        Send
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Tab: Dashboards (KYC reviews, user growth, revenue charts) */}
+            {activeTab === 'dashboard' && (
+              <div className="space-y-12 animate-fade-in">
+                
+                {/* KYC Verification Drawer */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  {/* Left Column: KYC submit */}
+                  <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-6 h-fit">
+                    <div>
+                      <h3 className="text-lg font-bold text-white">KYC Verification Gate</h3>
+                      <p className="text-xs text-slate-400 font-medium">Verify your profile credentials to unlocks bulk marketplaces.</p>
+                    </div>
+
+                    <form onSubmit={handleKycSubmit} className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-400 uppercase mb-2">Role Type</label>
+                        <select
+                          value={kycType} onChange={(e) => setKycType(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-800 rounded-xl py-3 px-4 text-xs focus:outline-none"
+                        >
+                          <option value="Farmer">Farmer Aadhaar</option>
+                          <option value="Tool Owner">Tool Owner Certification</option>
+                          <option value="Shopkeeper">Shopkeeper Licenses</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-400 uppercase mb-2">Aadhaar Card Number</label>
+                        <input
+                          type="text" required placeholder="12-Digit ID" maxLength="12"
+                          value={aadhaarInput} onChange={(e) => setAadhaarInput(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-800 rounded-xl py-3 px-4 text-xs focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-400 uppercase mb-2">Select Aadhaar Scan Image</label>
+                        <div className="border border-slate-800 rounded-lg p-4 bg-slate-950 text-center text-xs text-slate-500 font-medium cursor-pointer">
+                          Aadhaar_Card_Upload.jpg
+                        </div>
+                      </div>
+                      
+                      <div className="bg-slate-900 p-3 rounded-lg border border-slate-850 text-center">
+                        <p className="text-[10px] text-slate-400">Current KYC Verification Status:</p>
+                        <p className={`text-xs font-bold ${user.kycStatus === 'Approved' ? 'text-primary-500' : user.kycStatus === 'Pending' ? 'text-amber-400' : 'text-red-400'}`}>{user.kycStatus}</p>
+                      </div>
+
+                      <button type="submit" className="w-full bg-primary-600 hover:bg-primary-700 text-white font-medium py-3 rounded-xl text-xs transition-colors">
+                        Submit Documents
+                      </button>
+                    </form>
+                  </div>
+
+                  {/* Right Column: Admin review drawer */}
+                  <div className="lg:col-span-2 glass-panel p-6 rounded-2xl border border-slate-800 space-y-6">
+                    <div>
+                      <h3 className="text-lg font-bold text-white">KYC Review Panel (Admin view)</h3>
+                      <p className="text-xs text-slate-400">Review pending Aadhaar document requests.</p>
+                    </div>
+
+                    <div className="divide-y divide-slate-800">
+                      {kycRecords.map(rec => (
+                        <div key={rec.id} className="py-4 flex items-center justify-between text-xs">
+                          <div>
+                            <p className="font-bold text-white">{rec.name}</p>
+                            <p className="text-[10px] text-slate-400">{rec.role} | Aadhaar: {rec.aadhaar}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${rec.status === 'Approved' ? 'bg-primary-500/20 text-primary-400' : rec.status === 'Rejected' ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'}`}>{rec.status}</span>
+                            {rec.status === 'Pending' && (
+                              <div className="flex gap-1.5">
+                                <button onClick={() => handleKycReview(rec.id, 'Approved')} className="bg-primary-600 hover:bg-primary-700 text-white font-medium px-2 py-1 rounded">Approve</button>
+                                <button onClick={() => handleKycReview(rec.id, 'Rejected')} className="bg-red-600 hover:bg-red-700 text-white font-medium px-2 py-1 rounded">Reject</button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Dashboard Analytics Widgets */}
+                <div className="space-y-6">
+                  <h3 className="text-xl font-bold text-white">Platform Statistics & Analytics</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 text-center space-y-2">
+                      <p className="text-xs text-slate-400 uppercase font-bold">Total Machinery Booked</p>
+                      <p className="text-3xl font-extrabold text-primary-500">128 Hours</p>
+                      <p className="text-[10px] text-slate-500">Equipment Utilization: 84.5%</p>
+                    </div>
+                    <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 text-center space-y-2">
+                      <p className="text-xs text-slate-400 uppercase font-bold">Mandi Revenue volume</p>
+                      <p className="text-3xl font-extrabold text-white">₹48,250</p>
+                      <p className="text-[10px] text-slate-500">Direct sales commission: 0%</p>
+                    </div>
+                    <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 text-center space-y-2">
+                      <p className="text-xs text-slate-400 uppercase font-bold">Active Shopkeeping Stock</p>
+                      <p className="text-3xl font-extrabold text-white">192 Bags</p>
+                      <p className="text-[10px] text-slate-500">Seeds & Fertilizers listed: 24 types</p>
+                    </div>
+                    <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 text-center space-y-2">
+                      <p className="text-xs text-slate-400 uppercase font-bold">Active Platform Users</p>
+                      <p className="text-3xl font-extrabold text-primary-500">1,204 Farmers</p>
+                      <p className="text-[10px] text-slate-500">Monthly user growth: +14.2%</p>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+          </div>
+
+          {/* Toast notifications or Bottom bar */}
+          <footer className="bg-slate-950 border-t border-slate-900 py-8 text-center text-slate-500 text-xs">
+            <p>© 2026 AgriRent Hub. All rights reserved. Built as a startup-level AgriTech platform.</p>
+          </footer>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

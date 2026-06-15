@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: agrirent-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - agrirent-network
+
+  redis:
+    image: redis:alpine
+    container_name: agrirent-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - agrirent-network
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    container_name: agrirent-server
+    ports:
+      - "5000:5000"
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/agrirent
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=agrirent_prod_secret_9988
+      - PORT=5000
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - agrirent-network
+
+  client:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    container_name: agrirent-client
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+    networks:
+      - agrirent-network
+
+volumes:
+  mongo-data:
+
+networks:
+  agrirent-network:
+    driver: bridge
