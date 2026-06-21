@@ -27,12 +27,16 @@ const Home = () => {
       
       if (transcript.toLowerCase().includes('tractor') || transcript.toLowerCase().includes('ट्रैक्टर')) {
         navigate('/rentals?search=' + encodeURIComponent(transcript));
+      } else if (transcript.toLowerCase().includes('weather') || transcript.toLowerCase().includes('rain') || transcript.toLowerCase().includes('मौसम')) {
+        navigate('/weather');
       } else if (transcript.toLowerCase().includes('seed') || transcript.toLowerCase().includes('बीज') || transcript.toLowerCase().includes('fertilizer') || transcript.toLowerCase().includes('खाद')) {
         navigate('/shop?search=' + encodeURIComponent(transcript));
       } else if (transcript.toLowerCase().includes('disease') || transcript.toLowerCase().includes('रोग')) {
         navigate('/disease-scanner');
       } else if (transcript.toLowerCase().includes('price') || transcript.toLowerCase().includes('भाव')) {
         navigate('/price-prediction');
+      } else if (transcript.toLowerCase().includes('quiz') || transcript.toLowerCase().includes('क्विज')) {
+        navigate('/quiz');
       } else {
         navigate('/rentals?search=' + encodeURIComponent(transcript));
       }
@@ -169,6 +173,40 @@ const Home = () => {
           <p className="text-sm text-slate-400 leading-relaxed">
             Predict future crop mandi prices, diagnose leaf sickness via diagnostic scanners, and seek irrigation advisories.
           </p>
+        </div>
+      </section>
+
+      {/* AI Features Showcase */}
+      <section className="space-y-8">
+        <div className="text-center space-y-2">
+          <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded-full px-4 py-1.5 text-xs text-blue-400 font-semibold uppercase tracking-wider">
+            ✨ Newly Added Production Features
+          </div>
+          <h2 className="text-3xl font-bold text-white">Powered by Real AI & Live Data</h2>
+          <p className="text-slate-400 text-sm max-w-2xl mx-auto">Production-grade tools to help every farmer make data-driven decisions — all in one platform.</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {[
+            { emoji: '🔬', title: 'AI Disease Detector', desc: 'Upload a leaf photo — Gemini Vision AI diagnoses disease with treatment, fertilizer & pesticide advice.', link: '/disease-scanner', color: 'from-emerald-950/40 to-slate-950', border: 'border-emerald-500/20 hover:border-emerald-500/50', tag: 'Gemini 2.0' },
+            { emoji: '🤖', title: 'AI Agronomist Chat', desc: 'Real-time farming advice in English, Hindi or Hinglish. Ask about diseases, fertilizers, govt schemes.', link: '/ai-advisory', color: 'from-blue-950/40 to-slate-950', border: 'border-blue-500/20 hover:border-blue-500/50', tag: 'Gemini 2.0' },
+            { emoji: '🌦️', title: 'Weather Forecast', desc: 'Live 7-day forecast with Rain % prediction, spraying & irrigation recommendations for your field.', link: '/weather', color: 'from-cyan-950/40 to-slate-950', border: 'border-cyan-500/20 hover:border-cyan-500/50', tag: 'Live Data' },
+            { emoji: '💳', title: 'Razorpay Payments', desc: 'Secure online payments for equipment rentals. Pay after owner approval — UPI, Card, Netbanking.', link: '/dashboard', color: 'from-purple-950/40 to-slate-950', border: 'border-purple-500/20 hover:border-purple-500/50', tag: 'Secure' },
+          ].map((feat) => (
+            <Link key={feat.title} to={feat.link}
+              className={`bg-gradient-to-br ${feat.color} border ${feat.border} rounded-2xl p-6 space-y-4 block transition-all hover:-translate-y-1 hover:shadow-lg group`}>
+              <div className="flex items-center justify-between">
+                <span className="text-4xl">{feat.emoji}</span>
+                <span className="text-[9px] font-bold bg-slate-800 text-slate-400 border border-slate-700 px-2 py-0.5 rounded-full uppercase tracking-wider">{feat.tag}</span>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white group-hover:text-emerald-300 transition-colors">{feat.title}</h3>
+                <p className="text-[11px] text-slate-400 leading-relaxed mt-1">{feat.desc}</p>
+              </div>
+              <div className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold">
+                Try Now <ArrowRight size={10} className="group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+          ))}
         </div>
       </section>
 

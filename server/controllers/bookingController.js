@@ -103,9 +103,9 @@ const updateBookingStatus = async (req, res, next) => {
     }
 
     booking.status = status;
-    
-    // Automatically flag payment status if approved in sandbox
-    if (status === 'Approved') {
+
+    // Only mark completed as paid; payment flows through Razorpay
+    if (status === 'Completed') {
       booking.paymentStatus = 'Paid';
     }
 

@@ -1,6 +1,15 @@
 const mongoose = require('mongoose');
 
 const paymentSchema = new mongoose.Schema({
+  booking: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Booking',
+    default: null
+  },
+  farmer: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
   orderId: {
     type: String,
     required: true
@@ -14,17 +23,22 @@ const paymentSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  currency: {
+    type: String,
+    default: 'INR'
+  },
   status: {
     type: String,
-    enum: ['Created', 'Paid', 'Failed', 'Refunded'],
+    enum: ['Created', 'Completed', 'Failed', 'Refunded'],
     default: 'Created'
   },
   method: {
-    type: String, // UPI, Card, Netbanking
-    default: 'UPI'
+    type: String,
+    default: 'Razorpay'
   },
   signature: {
-    type: String
+    type: String,
+    default: ''
   }
 }, {
   timestamps: true

@@ -2,697 +2,548 @@ import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import axios from 'axios';
 import { updateKYC } from '../store/authSlice';
-import { BarChart3, Users, DollarSign, Tractor, ShoppingBag, ShieldCheck, FileText, Check, X, PlusCircle, Trash, Star } from 'lucide-react';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  LineChart, Line, PieChart, Pie, Cell
+} from 'recharts';
+import {
+  BarChart3, Users, DollarSign, ShoppingBag, ShieldCheck, FileText, Check, X,
+  PlusCircle, Trash2, Star, TrendingUp, Package, Calendar, Activity,
+  Leaf, Bot, Award, CreditCard, RefreshCw, Edit2, AlertTriangle,
+  CheckCircle, Clock, Zap, Eye
+} from 'lucide-react';
 
+// ─── Stat Card ────────────────────────────────────────────────────────────────
+const StatCard = ({ label, value, icon: Icon, color, sub }) => (
+  <div className="glass border border-slate-800 rounded-2xl p-5 space-y-3 hover:border-slate-700 transition-all">
+    <div className="flex items-center justify-between">
+      <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">{label}</p>
+      <div className={`p-2 rounded-lg ${color}`}>
+        <Icon size={14} />
+      </div>
+    </div>
+    <p className="text-2xl font-extrabold text-white">{value}</p>
+    {sub && <p className="text-[10px] text-emerald-400 font-semibold">{sub}</p>}
+  </div>
+);
+
+// ─── Status Badge ─────────────────────────────────────────────────────────────
+const StatusBadge = ({ status }) => {
+  const map = {
+    Approved: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    Completed: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    Pending: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+    Rejected: 'bg-red-500/10 text-red-400 border-red-500/20',
+    Cancelled: 'bg-red-500/10 text-red-400 border-red-500/20',
+    Paid: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+    Unpaid: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
+    Success: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    Failed: 'bg-red-500/10 text-red-400 border-red-500/20',
+  };
+  return (
+    <span className={`text-[10px] font-bold border px-2 py-0.5 rounded-full ${map[status] || 'bg-slate-800 text-slate-400 border-slate-700'}`}>
+      {status}
+    </span>
+  );
+};
+
+// ─── Section Header ───────────────────────────────────────────────────────────
+const SectionHeader = ({ icon: Icon, title, subtitle, iconColor = 'text-emerald-400' }) => (
+  <div className="flex items-center gap-3 border-b border-slate-800 pb-4 mb-5">
+    <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+      <Icon size={16} className={iconColor} />
+    </div>
+    <div>
+      <h3 className="text-sm font-bold text-white">{title}</h3>
+      {subtitle && <p className="text-[10px] text-slate-500 mt-0.5">{subtitle}</p>}
+    </div>
+  </div>
+);
+
+const CHART_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+
+// ─── Main Dashboards Component ────────────────────────────────────────────────
 const Dashboards = () => {
   const { user, token } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
 
-  // KYC submit states
+  const [activeTab, setActiveTab] = useState('overview');
+  const [loading, setLoading] = useState(true);
+
+  // Common data
+  const [bookings, setBookings] = useState([]);
+  const [myProducts, setMyProducts] = useState([]);
+  const [kycRecords, setKycRecords] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [diseaseScans, setDiseaseScans] = useState([]);
+  const [analytics, setAnalytics] = useState({ revenue: 0, count: 0, pending: 0 });
+  const [allUsers, setAllUsers] = useState([]);
+
+  // KYC form
   const [aadhaar, setAadhaar] = useState('');
   const [kycType, setKycType] = useState('Farmer');
   const [submittingKYC, setSubmittingKYC] = useState(false);
 
-  // Common data states
-  const [bookings, setBookings] = useState([]);
-  const [myProducts, setMyProducts] = useState([]);
-  const [kycRecords, setKycRecords] = useState([]);
-  const [analytics, setAnalytics] = useState({ revenue: 0, count: 0 });
+  // Tool form
+  const [toolForm, setToolForm] = useState({ name: '', description: '', category: 'Tractor', daily: '', weekly: '', monthly: '', power: '', fuel: 'Diesel' });
+  const [addingTool, setAddingTool] = useState(false);
 
-  // Tool Owner listing form states
-  const [toolName, setToolName] = useState('');
-  const [toolDesc, setToolDesc] = useState('');
-  const [toolCat, setToolCat] = useState('Tractor');
-  const [dailyRate, setDailyRate] = useState('');
-  const [weeklyRate, setWeeklyRate] = useState('');
-  const [monthlyRate, setMonthlyRate] = useState('');
-  const [power, setPower] = useState('');
-  const [fuel, setFuel] = useState('Diesel');
+  // Product form
+  const [prodForm, setProdForm] = useState({ name: '', description: '', type: 'Seed', category: '', price: '', stock: '' });
+  const [addingProd, setAddingProd] = useState(false);
 
-  // Shopkeeper product form states
-  const [prodName, setProdName] = useState('');
-  const [prodDesc, setProdDesc] = useState('');
-  const [prodType, setProdType] = useState('Seed'); // 'Seed' or 'Fertilizer'
-  const [prodCat, setProdCat] = useState('');
-  const [prodPrice, setProdPrice] = useState('');
-  const [prodStock, setProdStock] = useState('');
+  // Razorpay payment for pending booking
+  const [payingBooking, setPayingBooking] = useState(null);
 
-  // Initial Fetch based on role
-  const loadDashboardData = async () => {
-    if (!token) return;
+  const loadData = async () => {
+    if (!token || !user) return;
+    setLoading(true);
     try {
-      if (user.role === 'Farmer') {
-        // Fetch my rentals
-        const res = await axios.get('/api/bookings/my-rentals', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (res.data.success) {
-          setBookings(res.data.bookings);
-        }
+      if (user.role === 'Farmer' || user.role === 'Buyer') {
+        const [bookRes, payRes, diseaseRes] = await Promise.allSettled([
+          axios.get('/api/bookings/my-rentals', { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get('/api/payments/history', { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get('/api/disease/history', { headers: { Authorization: `Bearer ${token}` } })
+        ]);
+        if (bookRes.status === 'fulfilled' && bookRes.value.data.success) setBookings(bookRes.value.data.bookings);
+        if (payRes.status === 'fulfilled' && payRes.value.data.success) setPayments(payRes.value.data.payments);
+        if (diseaseRes.status === 'fulfilled' && diseaseRes.value.data.success) setDiseaseScans(diseaseRes.value.data.reports);
+
       } else if (user.role === 'Tool Owner') {
-        // Fetch bookings requests
-        const resReq = await axios.get('/api/bookings/requests', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (resReq.data.success) {
-          setBookings(resReq.data.bookings);
-          
-          // Calculate owner revenue
-          const approved = resReq.data.bookings.filter(b => b.status === 'Approved' || b.status === 'Completed');
-          const sum = approved.reduce((acc, b) => acc + b.totalAmount, 0);
-          setAnalytics({ revenue: sum, count: resReq.data.bookings.length });
+        const [reqRes, toolsRes] = await Promise.allSettled([
+          axios.get('/api/bookings/requests', { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get('/api/tools')
+        ]);
+        if (reqRes.status === 'fulfilled' && reqRes.value.data.success) {
+          const allBookings = reqRes.value.data.bookings;
+          setBookings(allBookings);
+          const approved = allBookings.filter(b => b.status === 'Approved' || b.status === 'Completed');
+          const revenue = approved.reduce((acc, b) => acc + (b.totalAmount || 0), 0);
+          const pending = allBookings.filter(b => b.status === 'Pending').length;
+          setAnalytics({ revenue, count: allBookings.length, pending });
+        }
+        if (toolsRes.status === 'fulfilled' && toolsRes.value.data.success) {
+          const mine = toolsRes.value.data.tools.filter(t => t.owner?._id === user._id || t.owner === user._id);
+          setMyProducts(mine);
         }
 
-        // Fetch my tool listings
-        const resTools = await axios.get('/api/tools');
-        if (resTools.data.success) {
-          const mine = resTools.data.tools.filter(t => t.owner?._id === user._id || t.owner === user._id);
-          setMyProducts(mine);
-        }
       } else if (user.role === 'Shopkeeper') {
-        // Fetch my listed shop products
-        const resProd = await axios.get('/api/products');
-        if (resProd.data.success) {
-          const mine = resProd.data.products.filter(p => p.shopkeeper?._id === user._id || p.shopkeeper === user._id);
+        const prodRes = await axios.get('/api/products');
+        if (prodRes.data.success) {
+          const mine = prodRes.data.products.filter(p => p.shopkeeper?._id === user._id || p.shopkeeper === user._id);
           setMyProducts(mine);
+          const totalRevenue = mine.reduce((a, p) => a + (p.price * (p.sold || 0)), 0);
+          setAnalytics({ revenue: totalRevenue, count: mine.length });
         }
+
       } else if (user.role === 'Admin') {
-        // Fetch KYC records
-        const resKyc = await axios.get('/api/kyc/records', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (resKyc.data.success) {
-          setKycRecords(resKyc.data.records);
-        }
+        const [kycRes, usersRes] = await Promise.allSettled([
+          axios.get('/api/kyc/records', { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get('/api/auth/users', { headers: { Authorization: `Bearer ${token}` } })
+        ]);
+        if (kycRes.status === 'fulfilled' && kycRes.value.data.success) setKycRecords(kycRes.value.data.records);
+        if (usersRes.status === 'fulfilled' && usersRes.value.data.success) setAllUsers(usersRes.value.data.users);
       }
     } catch (err) {
-      console.error('Error loading dashboard stats:', err);
+      console.error('Dashboard data load error:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadDashboardData();
-  }, [user, token]);
+  useEffect(() => { loadData(); }, [user, token]);
 
-  // Submit KYC Handler
+  // ── KYC Submit ─────────────────────────────────────────────────────────────
   const handleKycSubmit = async (e) => {
     e.preventDefault();
-    if (!aadhaar || aadhaar.length !== 12) {
-      alert('Please provide a valid 12-digit Aadhaar Card number.');
-      return;
-    }
-
+    if (!aadhaar || aadhaar.length !== 12) { alert('Please provide a valid 12-digit Aadhaar number.'); return; }
     setSubmittingKYC(true);
     try {
       const res = await axios.post('/api/kyc/submit', {
-        aadhaarNumber: aadhaar,
-        verificationType: kycType,
+        aadhaarNumber: aadhaar, verificationType: kycType,
         documentImage: 'https://images.unsplash.com/photo-1592982537447-7440770cbfc9?auto=format&fit=crop&q=80&w=200'
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (res.data.success) {
-        alert('KYC documents submitted successfully! Status is now Pending Admin review.');
-        dispatch(updateKYC('Pending'));
-      }
-    } catch (err) {
-      alert(err.response?.data?.message || 'Error submitting KYC.');
-    } finally {
-      setSubmittingKYC(false);
-    }
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.data.success) { alert('KYC submitted! Pending admin review.'); dispatch(updateKYC('Pending')); }
+    } catch (err) { alert(err.response?.data?.message || 'Error submitting KYC.'); }
+    finally { setSubmittingKYC(false); }
   };
 
-  // Admin KYC Review Action
+  // ── Admin KYC Review ───────────────────────────────────────────────────────
   const handleReviewKYC = async (id, status) => {
     try {
-      const res = await axios.put(`/api/kyc/review/${id}`, {
-        status,
-        rejectionReason: status === 'Rejected' ? 'Documents could not be verified.' : ''
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.data.success) {
-        alert(`KYC status updated to ${status}!`);
-        // reload admin lists
-        loadDashboardData();
-      }
-    } catch (err) {
-      alert('Error updating KYC review status.');
-    }
+      await axios.put(`/api/kyc/review/${id}`, {
+        status, rejectionReason: status === 'Rejected' ? 'Documents could not be verified.' : ''
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      alert(`KYC ${status}`);
+      loadData();
+    } catch { alert('Error updating KYC.'); }
   };
 
-  // Owner Booking status updates
-  const handleBookingAction = async (bookingId, status) => {
+  // ── Booking Status ─────────────────────────────────────────────────────────
+  const handleBookingAction = async (id, status) => {
     try {
-      const res = await axios.put(`/api/bookings/${bookingId}/status`, {
-        status
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.data.success) {
-        alert(`Booking status marked as ${status}.`);
-        loadDashboardData();
+      await axios.put(`/api/bookings/${id}/status`, { status }, { headers: { Authorization: `Bearer ${token}` } });
+      loadData();
+    } catch (err) { alert(err.response?.data?.message || 'Error updating booking.'); }
+  };
+
+  // ── Razorpay Payment ───────────────────────────────────────────────────────
+  const handlePayNow = async (booking) => {
+    setPayingBooking(booking._id);
+    try {
+      const orderRes = await axios.post('/api/payments/create-order', {
+        amount: booking.totalAmount, bookingId: booking._id
+      }, { headers: { Authorization: `Bearer ${token}` } });
+
+      const { orderId, amount, keyId, demo } = orderRes.data;
+
+      if (demo) {
+        // Demo mode: simulate payment
+        await axios.post('/api/payments/verify', {
+          razorpay_order_id: orderId,
+          razorpay_payment_id: `pay_demo_${Date.now()}`,
+          razorpay_signature: 'demo_signature',
+          bookingId: booking._id,
+          amount: booking.totalAmount
+        }, { headers: { Authorization: `Bearer ${token}` } });
+        alert('✅ Payment Successful! (Demo Mode) Booking Confirmed.');
+        loadData();
+        return;
       }
+
+      // Real Razorpay
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      document.body.appendChild(script);
+      script.onload = () => {
+        const rzp = new window.Razorpay({
+          key: keyId,
+          amount,
+          currency: 'INR',
+          name: 'AgriRent Hub',
+          description: `Booking: ${booking.tool?.name || 'Equipment'}`,
+          order_id: orderId,
+          handler: async (response) => {
+            try {
+              await axios.post('/api/payments/verify', {
+                ...response, bookingId: booking._id, amount: booking.totalAmount
+              }, { headers: { Authorization: `Bearer ${token}` } });
+              alert('✅ Payment Successful! Booking Confirmed.');
+              loadData();
+            } catch { alert('Payment verification failed. Contact support.'); }
+          },
+          prefill: { name: user.name, email: user.email, contact: user.phone },
+          theme: { color: '#10b981' }
+        });
+        rzp.open();
+      };
     } catch (err) {
-      alert(err.response?.data?.message || 'Error updating booking status.');
+      alert(err.response?.data?.message || 'Payment initiation failed.');
+    } finally {
+      setPayingBooking(null);
     }
   };
 
-  // Owner Tool Listing creation
+  // ── Add Tool ───────────────────────────────────────────────────────────────
   const handleAddTool = async (e) => {
     e.preventDefault();
+    setAddingTool(true);
     try {
-      const res = await axios.post('/api/tools', {
-        name: toolName,
-        description: toolDesc,
-        category: toolCat,
-        rentRates: {
-          daily: Number(dailyRate),
-          weekly: Number(weeklyRate),
-          monthly: Number(monthlyRate)
-        },
-        specifications: {
-          power,
-          fuelType: fuel
-        },
-        coordinates: [77.2090, 28.6139] // Delhi
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (res.data.success) {
-        alert('Equipment listing published successfully!');
-        setToolName('');
-        setToolDesc('');
-        setDailyRate('');
-        setWeeklyRate('');
-        setMonthlyRate('');
-        setPower('');
-        loadDashboardData();
-      }
-    } catch (err) {
-      alert('Error publishing tool listing.');
-    }
+      await axios.post('/api/tools', {
+        name: toolForm.name, description: toolForm.description,
+        category: toolForm.category, coordinates: [77.2090, 28.6139],
+        rentRates: { daily: Number(toolForm.daily), weekly: Number(toolForm.weekly), monthly: Number(toolForm.monthly) },
+        specifications: { power: toolForm.power, fuelType: toolForm.fuel }
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      setToolForm({ name: '', description: '', category: 'Tractor', daily: '', weekly: '', monthly: '', power: '', fuel: 'Diesel' });
+      loadData();
+    } catch (err) { alert(err.response?.data?.message || 'Error adding tool.'); }
+    finally { setAddingTool(false); }
   };
 
-  // Shopkeeper Product listing creation
+  // ── Add Product ────────────────────────────────────────────────────────────
   const handleAddProduct = async (e) => {
     e.preventDefault();
+    setAddingProd(true);
     try {
-      const res = await axios.post('/api/products', {
-        name: prodName,
-        description: prodDesc,
-        type: prodType,
-        category: prodCat,
-        price: Number(prodPrice),
-        stock: Number(prodStock),
+      await axios.post('/api/products', {
+        name: prodForm.name, description: prodForm.description,
+        type: prodForm.type, category: prodForm.category,
+        price: Number(prodForm.price), stock: Number(prodForm.stock),
         images: ['https://images.unsplash.com/photo-1622383563227-04401ab4e5ea?auto=format&fit=crop&q=80&w=200']
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (res.data.success) {
-        alert('Product listing created successfully!');
-        setProdName('');
-        setProdDesc('');
-        setProdCat('');
-        setProdPrice('');
-        setProdStock('');
-        loadDashboardData();
-      }
-    } catch (err) {
-      alert('Error publishing product catalog.');
-    }
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      setProdForm({ name: '', description: '', type: 'Seed', category: '', price: '', stock: '' });
+      loadData();
+    } catch (err) { alert(err.response?.data?.message || 'Error adding product.'); }
+    finally { setAddingProd(false); }
   };
 
-  if (!token) {
-    return (
-      <div className="text-center py-20 text-slate-500">
-        Please log in to access your dashboard metrics.
-      </div>
-    );
-  }
+  if (!token) return (
+    <div className="text-center py-20">
+      <AlertTriangle size={40} className="text-amber-500 mx-auto mb-4" />
+      <p className="text-slate-400 text-sm">Please log in to access your dashboard.</p>
+    </div>
+  );
+
+  const role = user?.role;
+
+  // ── Chart data helpers ─────────────────────────────────────────────────────
+  const bookingStatusData = [
+    { name: 'Pending', value: bookings.filter(b => b.status === 'Pending').length, color: '#f59e0b' },
+    { name: 'Approved', value: bookings.filter(b => b.status === 'Approved').length, color: '#10b981' },
+    { name: 'Rejected', value: bookings.filter(b => b.status === 'Rejected').length, color: '#ef4444' },
+    { name: 'Completed', value: bookings.filter(b => b.status === 'Completed').length, color: '#3b82f6' },
+  ].filter(d => d.value > 0);
+
+  const monthlyRevenueData = bookings
+    .filter(b => b.status === 'Approved' || b.status === 'Completed')
+    .reduce((acc, b) => {
+      const month = new Date(b.createdAt).toLocaleString('default', { month: 'short' });
+      const found = acc.find(d => d.month === month);
+      if (found) found.revenue += b.totalAmount || 0;
+      else acc.push({ month, revenue: b.totalAmount || 0 });
+      return acc;
+    }, []);
+
+  const tabs = role === 'Farmer' || role === 'Buyer'
+    ? ['overview', 'bookings', 'payments', 'disease', 'kyc']
+    : role === 'Tool Owner'
+    ? ['overview', 'requests', 'my-tools', 'analytics', 'kyc']
+    : role === 'Shopkeeper'
+    ? ['overview', 'products', 'analytics', 'kyc']
+    : ['users', 'kyc', 'analytics'];
+
+  const tabLabels = {
+    overview: '📊 Overview', bookings: '📅 Bookings', payments: '💳 Payments',
+    disease: '🔬 Scans', kyc: '🛡️ KYC', requests: '📩 Requests',
+    'my-tools': '🚜 My Tools', analytics: '📈 Analytics',
+    products: '🛒 Products', users: '👥 Users'
+  };
 
   return (
-    <div className="space-y-12">
-      
-      {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-white">{user.role} Dashboard</h1>
-        <p className="text-slate-400 text-xs mt-1">Review your activities, checkouts, and security profile clearances.</p>
+    <div className="space-y-8">
+
+      {/* Header */}
+      <div className="flex items-start justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            {role === 'Farmer' || role === 'Buyer' ? '🌾' : role === 'Tool Owner' ? '🚜' : role === 'Shopkeeper' ? '🛒' : '⚙️'}
+            {role} Dashboard
+          </h1>
+          <p className="text-slate-400 text-xs mt-1">
+            Welcome back, <span className="text-emerald-400 font-bold">{user?.name}</span> •
+            <span className={`ml-1 text-[10px] font-bold px-2 py-0.5 rounded ${
+              user.kycStatus === 'Approved' ? 'text-emerald-400 bg-emerald-500/10' : 'text-amber-400 bg-amber-500/10'
+            }`}>
+              KYC: {user.kycStatus}
+            </span>
+          </p>
+        </div>
+        <div className="flex items-center gap-3 text-xs">
+          <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl">
+            <span className="text-amber-400">🪙</span>
+            <span className="font-bold text-white">{user.coins}</span>
+          </div>
+          <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl">
+            <span className="text-emerald-400">⚡</span>
+            <span className="font-bold text-white">{user.xp} XP</span>
+          </div>
+          <span className="text-[10px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2 py-1 rounded-lg font-bold">
+            {user.badge}
+          </span>
+        </div>
       </div>
 
-      {/* KYC Verification Form Gate */}
-      {user.kycStatus !== 'Approved' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* KYC Submit details */}
-          <div className="glass p-6 rounded-3xl border border-slate-800 space-y-6 h-fit">
-            <div className="space-y-1">
-              <h3 className="text-base font-bold text-white flex items-center gap-1.5">
-                <ShieldCheck className="text-emerald-400" size={20} /> Submit KYC Documents
-              </h3>
-              <p className="text-xs text-slate-400">Verifying your identity unlocks listings marketplaces.</p>
-            </div>
+      {/* Tabs */}
+      <div className="flex gap-1 flex-wrap bg-slate-900/50 border border-slate-800 rounded-xl p-1">
+        {tabs.map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-3 py-2 rounded-lg text-[11px] font-bold transition-all ${
+              activeTab === tab
+                ? 'bg-emerald-600 text-white shadow'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            {tabLabels[tab]}
+          </button>
+        ))}
+      </div>
 
-            <form onSubmit={handleKycSubmit} className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider pl-0.5">Verification Role</label>
-                <select
-                  value={kycType}
-                  onChange={(e) => setKycType(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-850 rounded-xl py-2.5 px-3 text-xs text-white focus:outline-none"
-                >
-                  <option value="Farmer">Farmer Aadhaar</option>
-                  <option value="Tool Owner">Tool Owner Certification</option>
-                  <option value="Shopkeeper">Shopkeeper Business License</option>
-                </select>
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <RefreshCw size={28} className="text-emerald-500 animate-spin" />
+        </div>
+      ) : (
+        <>
+          {/* ── KYC TAB ──────────────────────────────────────────────────────── */}
+          {activeTab === 'kyc' && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* KYC Form */}
+              <div className="glass p-6 rounded-2xl border border-slate-800 space-y-5 h-fit">
+                <SectionHeader icon={ShieldCheck} title="Submit KYC" subtitle="Verify identity to unlock features" />
+                {user.kycStatus === 'Approved' ? (
+                  <div className="text-center py-8">
+                    <CheckCircle size={40} className="text-emerald-500 mx-auto mb-3" />
+                    <p className="text-sm font-bold text-emerald-400">KYC Approved!</p>
+                    <p className="text-xs text-slate-500 mt-1">Your identity is verified.</p>
+                  </div>
+                ) : (
+                  <form onSubmit={handleKycSubmit} className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Verification Type</label>
+                      <select value={kycType} onChange={e => setKycType(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 px-3 text-xs text-white focus:outline-none focus:border-emerald-500">
+                        <option>Farmer</option><option>Tool Owner</option><option>Shopkeeper</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Aadhaar Number</label>
+                      <input type="text" required placeholder="12-digit Aadhaar" maxLength={12}
+                        value={aadhaar} onChange={e => setAadhaar(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 px-3 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                    </div>
+                    <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800 text-center">
+                      <p className="text-[10px] text-slate-500 font-bold">Current Status</p>
+                      <p className={`text-sm font-extrabold mt-0.5 ${user.kycStatus === 'Pending' ? 'text-amber-400 animate-pulse' : 'text-red-400'}`}>
+                        {user.kycStatus}
+                      </p>
+                    </div>
+                    <button type="submit" disabled={submittingKYC || user.kycStatus === 'Pending'}
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-800 disabled:text-slate-600 text-white font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all">
+                      {submittingKYC ? 'Submitting...' : user.kycStatus === 'Pending' ? 'Under Review...' : 'Submit KYC'}
+                    </button>
+                  </form>
+                )}
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider pl-0.5">Aadhaar Card Number</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="12-digit number"
-                  maxLength={12}
-                  value={aadhaar}
-                  onChange={(e) => setAadhaar(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-850 rounded-xl py-2.5 px-3 text-xs text-white focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div className="bg-slate-950/40 p-4 border border-slate-850 rounded-xl text-center space-y-1">
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">KYC Status</p>
-                <p className={`text-xs font-bold ${
-                  user.kycStatus === 'Pending' ? 'text-amber-400 animate-pulse' : 'text-red-400'
-                }`}>
-                  {user.kycStatus}
+              {/* Info */}
+              <div className="lg:col-span-2 glass p-6 rounded-2xl border border-slate-800 space-y-4">
+                <SectionHeader icon={FileText} title="Why KYC is Required" subtitle="Platform trust and safety" />
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  All tool owners listing expensive machinery and shopkeepers listing certified agricultural products must complete KYC verification to ensure trust in our ecosystem.
                 </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {[
+                    { role: 'Farmers', desc: 'Verify via 12-digit Aadhaar Card', icon: '🌾' },
+                    { role: 'Tool Owners', desc: 'Submit machinery registration documents', icon: '🚜' },
+                    { role: 'Shopkeepers', desc: 'Provide shop license / GST certificate', icon: '🏪' },
+                  ].map(item => (
+                    <div key={item.role} className="bg-slate-900/40 border border-slate-800 rounded-xl p-4 space-y-2">
+                      <span className="text-2xl">{item.icon}</span>
+                      <p className="text-xs font-bold text-white">{item.role}</p>
+                      <p className="text-[10px] text-slate-400 leading-relaxed">{item.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── FARMER OVERVIEW ───────────────────────────────────────────────── */}
+          {activeTab === 'overview' && (role === 'Farmer' || role === 'Buyer') && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <StatCard label="Total Bookings" value={bookings.length} icon={Calendar} color="bg-emerald-500/10 text-emerald-400" sub={`${bookings.filter(b=>b.status==='Approved').length} approved`} />
+                <StatCard label="Total Payments" value={`₹${payments.reduce((a,p)=>a+(p.amount||0),0)}`} icon={CreditCard} color="bg-blue-500/10 text-blue-400" sub={`${payments.length} transactions`} />
+                <StatCard label="Disease Scans" value={diseaseScans.length} icon={Activity} color="bg-purple-500/10 text-purple-400" sub="AI analyzed" />
+                <StatCard label="XP Points" value={`${user.xp} XP`} icon={Zap} color="bg-amber-500/10 text-amber-400" sub={user.badge} />
               </div>
 
-              <button
-                type="submit"
-                disabled={submittingKYC || user.kycStatus === 'Pending'}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-800 text-white font-bold py-3 rounded-xl text-xs transition-colors shadow-md uppercase tracking-wider"
-              >
-                {submittingKYC ? 'Submitting...' : 'Upload KYC'}
-              </button>
-            </form>
-          </div>
-
-          {/* KYC FAQ */}
-          <div className="lg:col-span-2 glass p-8 rounded-3xl border border-slate-800 space-y-4 flex flex-col justify-center">
-            <h3 className="text-base font-bold text-slate-200">Why does AgriRent Hub require KYC?</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              To guarantee trust within our sharing ecosystem, all tool owners listing expensive tractors and shopkeepers listing premium certified crop products must submit verification.
-            </p>
-            <ul className="text-xs text-slate-400 space-y-2 list-disc pl-5 leading-relaxed">
-              <li>Farmers verify using their unique 12-digit Aadhaar.</li>
-              <li>Tool Owners must hold legal machinery log books.</li>
-              <li>Shopkeepers provide official regional seed vendor certification.</li>
-            </ul>
-          </div>
-
-        </div>
-      )}
-
-      {/* role specific dashboards views */}
-      
-      {/* 1. FARMER VIEW */}
-      {user.role === 'Farmer' && (
-        <div className="space-y-8 animate-fade-in">
-          {/* Metrics summary widgets */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-slate-900/40 p-6 border border-slate-850 rounded-2xl text-center space-y-1">
-              <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Total Shared bookings</p>
-              <p className="text-3xl font-extrabold text-emerald-400">{bookings.length} Orders</p>
-            </div>
-            <div className="bg-slate-900/40 p-6 border border-slate-850 rounded-2xl text-center space-y-1">
-              <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold font-bold">Agri Coins</p>
-              <p className="text-3xl font-extrabold text-white">🪙 {user.coins}</p>
-            </div>
-            <div className="bg-slate-900/40 p-6 border border-slate-850 rounded-2xl text-center space-y-1">
-              <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold font-bold">XP Level status</p>
-              <p className="text-3xl font-extrabold text-white">⚡ {user.xp} XP</p>
-            </div>
-          </div>
-
-          {/* Bookings history table */}
-          <div className="glass p-6 rounded-3xl border border-slate-800 space-y-4">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-slate-850 pb-2">
-              Rental History & Tracking
-            </h3>
-
-            {bookings.length === 0 ? (
-              <p className="text-slate-500 text-xs py-8 text-center">You have not requested any machinery rentals yet.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-850 text-slate-500 uppercase tracking-wider font-bold">
-                      <th className="py-3 px-4">Equipment</th>
-                      <th className="py-3 px-4">Start Date</th>
-                      <th className="py-3 px-4">End Date</th>
-                      <th className="py-3 px-4">Cost</th>
-                      <th className="py-3 px-4">Payment</th>
-                      <th className="py-3 px-4">Status</th>
-                      <th className="py-3 px-4">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-850 text-slate-350">
-                    {bookings.map(b => (
-                      <tr key={b._id} className="hover:bg-slate-950/20">
-                        <td className="py-3.5 px-4 font-bold text-white">{b.tool?.name || 'Machinery'}</td>
-                        <td className="py-3.5 px-4">{new Date(b.startDate).toLocaleDateString()}</td>
-                        <td className="py-3.5 px-4">{new Date(b.endDate).toLocaleDateString()}</td>
-                        <td className="py-3.5 px-4 font-bold text-emerald-400">₹{b.totalAmount}</td>
-                        <td className="py-3.5 px-4">{b.paymentStatus}</td>
-                        <td className="py-3.5 px-4">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            b.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-400' :
-                            b.status === 'Pending' ? 'bg-amber-500/10 text-amber-400' : 'bg-red-500/10 text-red-400'
-                          }`}>{b.status}</span>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          {b.status === 'Pending' && (
-                            <button
-                              onClick={() => handleBookingAction(b._id, 'Cancelled')}
-                              className="text-red-400 hover:text-red-300 font-bold transition-colors"
-                            >
-                              Cancel
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* 2. TOOL OWNER VIEW */}
-      {user.role === 'Tool Owner' && (
-        <div className="space-y-12 animate-fade-in">
-          
-          {/* Metrics summary widgets */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-slate-900/40 p-6 border border-slate-850 rounded-2xl text-center space-y-1">
-              <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Total earnings volume</p>
-              <p className="text-3xl font-extrabold text-emerald-400">₹{analytics.revenue}</p>
-            </div>
-            <div className="bg-slate-900/40 p-6 border border-slate-850 rounded-2xl text-center space-y-1">
-              <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Active Listings</p>
-              <p className="text-3xl font-extrabold text-white">{myProducts.length} Machines</p>
-            </div>
-            <div className="bg-slate-900/40 p-6 border border-slate-850 rounded-2xl text-center space-y-1">
-              <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Total Booking queries</p>
-              <p className="text-3xl font-extrabold text-white">{analytics.count} Orders</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            
-            {/* Owner listings forms */}
-            <div className="glass p-6 rounded-2xl border border-slate-800 space-y-6 h-fit">
-              <div className="space-y-1">
-                <h3 className="text-base font-bold text-white flex items-center gap-1.5">
-                  <PlusCircle className="text-emerald-400" size={18} /> Publish New Machine
-                </h3>
-                <p className="text-xs text-slate-400">Add active tractors, water pumps, sprayers...</p>
+              {/* Quick Actions */}
+              <div className="glass border border-slate-800 rounded-2xl p-5">
+                <SectionHeader icon={Zap} title="Quick Actions" />
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[
+                    { label: 'Book Equipment', path: '/rentals', emoji: '🚜', color: 'border-emerald-500/30 hover:border-emerald-500' },
+                    { label: 'Detect Disease', path: '/disease-scanner', emoji: '🔬', color: 'border-blue-500/30 hover:border-blue-500' },
+                    { label: 'AI Agronomist', path: '/ai-advisory', emoji: '🤖', color: 'border-purple-500/30 hover:border-purple-500' },
+                    { label: 'Weather Forecast', path: '/weather', emoji: '🌦️', color: 'border-amber-500/30 hover:border-amber-500' },
+                  ].map(action => (
+                    <a key={action.label} href={action.path}
+                      className={`flex flex-col items-center gap-2 p-4 bg-slate-900/40 border rounded-xl transition-all text-center group ${action.color}`}>
+                      <span className="text-2xl group-hover:scale-110 transition-transform">{action.emoji}</span>
+                      <span className="text-[11px] font-bold text-slate-300 group-hover:text-white">{action.label}</span>
+                    </a>
+                  ))}
+                </div>
               </div>
 
-              <form onSubmit={handleAddTool} className="space-y-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Equipment Name</label>
-                  <input
-                    type="text" required value={toolName} onChange={(e) => setToolName(e.target.value)}
-                    placeholder="e.g. John Deere Harvester 505"
-                    className="w-full bg-slate-950 border border-slate-850 rounded-xl py-2 px-3 text-xs text-white focus:outline-none"
-                  />
-                </div>
-                
-                <div className="space-y-1">
-                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Description</label>
-                  <textarea
-                    required rows={2} value={toolDesc} onChange={(e) => setToolDesc(e.target.value)}
-                    placeholder="Enter horse power details, tires condition..."
-                    className="w-full bg-slate-950 border border-slate-850 rounded-xl py-2 px-3 text-xs text-white focus:outline-none resize-none"
-                  ></textarea>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Category</label>
-                    <select
-                      value={toolCat} onChange={(e) => setToolCat(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-850 rounded-xl py-2 px-3 text-xs text-slate-300 focus:outline-none"
-                    >
-                      <option value="Tractor">Tractor</option>
-                      <option value="Rotavator">Rotavator</option>
-                      <option value="Cultivator">Cultivator</option>
-                      <option value="Seeder">Seeder</option>
-                      <option value="Harvester">Harvester</option>
-                      <option value="Sprayer">Sprayer</option>
-                      <option value="Water Pump">Water Pump</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Power HP</label>
-                    <input
-                      type="text" required value={power} onChange={(e) => setPower(e.target.value)}
-                      placeholder="e.g. 50 HP"
-                      className="w-full bg-slate-950 border border-slate-850 rounded-xl py-2 px-3 text-xs text-white focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Daily (₹)</label>
-                    <input
-                      type="number" required value={dailyRate} onChange={(e) => setDailyRate(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-850 rounded-xl py-2 px-2 text-xs text-white focus:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Weekly (₹)</label>
-                    <input
-                      type="number" required value={weeklyRate} onChange={(e) => setWeeklyRate(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-850 rounded-xl py-2 px-2 text-xs text-white focus:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Monthly (₹)</label>
-                    <input
-                      type="number" required value={monthlyRate} onChange={(e) => setMonthlyRate(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-850 rounded-xl py-2 px-2 text-xs text-white focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider"
-                >
-                  Publish Listing
-                </button>
-              </form>
-            </div>
-
-            {/* Bookings Approvals and Machinery Catalog listings */}
-            <div className="lg:col-span-2 space-y-8">
-              
-              {/* Requests list */}
-              <div className="glass p-6 rounded-2xl border border-slate-800 space-y-4">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-slate-850 pb-2">
-                  Pending Bookings Requests
-                </h3>
-
-                {bookings.filter(b => b.status === 'Pending').length === 0 ? (
-                  <p className="text-slate-500 text-xs py-4 text-center">No pending machinery bookings requests.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {bookings.filter(b => b.status === 'Pending').map(b => (
-                      <div key={b._id} className="bg-slate-950/40 p-4 border border-slate-850 rounded-xl flex items-center justify-between text-xs gap-4">
+              {/* Recent Bookings */}
+              {bookings.length > 0 && (
+                <div className="glass border border-slate-800 rounded-2xl p-5">
+                  <SectionHeader icon={Calendar} title="Recent Bookings" subtitle="Your latest tool rentals" />
+                  <div className="space-y-2">
+                    {bookings.slice(0, 4).map(b => (
+                      <div key={b._id} className="flex items-center justify-between bg-slate-900/40 border border-slate-800 rounded-xl px-4 py-3">
                         <div>
-                          <p className="font-bold text-white">{b.tool?.name}</p>
-                          <p className="text-[10px] text-slate-400 mt-0.5">
-                            Farmer: {b.farmer?.name} ({b.farmer?.phone})
-                          </p>
-                          <p className="text-[10px] text-slate-400">
-                            Dates: {new Date(b.startDate).toLocaleDateString()} to {new Date(b.endDate).toLocaleDateString()}
-                          </p>
+                          <p className="text-xs font-bold text-white">{b.tool?.name || 'Equipment'}</p>
+                          <p className="text-[10px] text-slate-500">{new Date(b.startDate).toLocaleDateString()} — {new Date(b.endDate).toLocaleDateString()}</p>
                         </div>
-                        <div className="flex flex-col items-end gap-2">
-                          <p className="font-extrabold text-emerald-400">₹{b.totalAmount}</p>
-                          <div className="flex gap-1.5">
-                            <button
-                              onClick={() => handleBookingAction(b._id, 'Approved')}
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white p-1.5 rounded"
-                              title="Approve Booking"
-                            >
-                              <Check size={14} />
-                            </button>
-                            <button
-                              onClick={() => handleBookingAction(b._id, 'Rejected')}
-                              className="bg-red-600 hover:bg-red-700 text-white p-1.5 rounded"
-                              title="Reject Request"
-                            >
-                              <X size={14} />
-                            </button>
-                          </div>
+                        <div className="text-right space-y-1">
+                          <StatusBadge status={b.status} />
+                          <p className="text-xs font-extrabold text-emerald-400">₹{b.totalAmount}</p>
                         </div>
                       </div>
                     ))}
                   </div>
-                )}
-              </div>
-
-              {/* Machinery catalog list */}
-              <div className="glass p-6 rounded-2xl border border-slate-800 space-y-4">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-slate-850 pb-2">
-                  Active Machinery Inventory
-                </h3>
-
-                {myProducts.length === 0 ? (
-                  <p className="text-slate-500 text-xs py-4 text-center">You have not listed any machinery catalog yet.</p>
-                ) : (
-                  <div className="divide-y divide-slate-850">
-                    {myProducts.map(tool => (
-                      <div key={tool._id} className="py-3 flex items-center justify-between text-xs gap-4">
-                        <div>
-                          <p className="font-bold text-white">{tool.name}</p>
-                          <p className="text-[9px] text-slate-400 uppercase font-semibold">{tool.category} | {tool.specifications?.power}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-extrabold text-emerald-400">₹{tool.rentRates?.daily}/Day</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
+                </div>
+              )}
             </div>
+          )}
 
-          </div>
-        </div>
-      )}
-
-      {/* 3. SHOPKEEPER VIEW */}
-      {user.role === 'Shopkeeper' && (
-        <div className="space-y-12 animate-fade-in">
-          
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            
-            {/* Create Product Form */}
-            <div className="glass p-6 rounded-2xl border border-slate-800 space-y-6 h-fit">
-              <div className="space-y-1">
-                <h3 className="text-base font-bold text-white flex items-center gap-1.5">
-                  <PlusCircle className="text-emerald-400" size={18} /> Publish Shop Product
-                </h3>
-                <p className="text-xs text-slate-400">Add high-yield seeds or chemical inputs.</p>
-              </div>
-
-              <form onSubmit={handleAddProduct} className="space-y-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Product Name</label>
-                  <input
-                    type="text" required value={prodName} onChange={(e) => setProdName(e.target.value)}
-                    placeholder="e.g. Shaktiman DAP Compost Bag"
-                    className="w-full bg-slate-950 border border-slate-850 rounded-xl py-2 px-3 text-xs text-white focus:outline-none"
-                  />
+          {/* ── FARMER BOOKINGS ────────────────────────────────────────────────── */}
+          {activeTab === 'bookings' && (role === 'Farmer' || role === 'Buyer') && (
+            <div className="glass border border-slate-800 rounded-2xl p-6">
+              <SectionHeader icon={Calendar} title="Booking History" subtitle="All your tool rental bookings" />
+              {bookings.length === 0 ? (
+                <div className="text-center py-12">
+                  <Calendar size={32} className="text-slate-700 mx-auto mb-3" />
+                  <p className="text-slate-500 text-sm">No bookings yet. <a href="/rentals" className="text-emerald-400 hover:underline">Rent equipment now →</a></p>
                 </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Description</label>
-                  <textarea
-                    required rows={2} value={prodDesc} onChange={(e) => setProdDesc(e.target.value)}
-                    placeholder="Enter nutrient formulas, weight sizes..."
-                    className="w-full bg-slate-950 border border-slate-850 rounded-xl py-2 px-3 text-xs text-white focus:outline-none resize-none"
-                  ></textarea>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Input Type</label>
-                    <select
-                      value={prodType} onChange={(e) => setProdType(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-850 rounded-xl py-2 px-3 text-xs text-slate-350 focus:outline-none"
-                    >
-                      <option value="Seed">Seeds</option>
-                      <option value="Fertilizer">Fertilizers</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Category</label>
-                    <input
-                      type="text" required value={prodCat} onChange={(e) => setProdCat(e.target.value)}
-                      placeholder="e.g. Wheat, NPK, Organic"
-                      className="w-full bg-slate-950 border border-slate-850 rounded-xl py-2 px-3 text-xs text-white focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Price per bag (₹)</label>
-                    <input
-                      type="number" required value={prodPrice} onChange={(e) => setProdPrice(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-850 rounded-xl py-2.5 px-3 text-xs text-white focus:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Available Stock</label>
-                    <input
-                      type="number" required value={prodStock} onChange={(e) => setProdStock(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-850 rounded-xl py-2.5 px-3 text-xs text-white focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider"
-                >
-                  Publish Listing
-                </button>
-              </form>
-            </div>
-
-            {/* Shop Product Inventory Manager */}
-            <div className="lg:col-span-2 glass p-6 rounded-2xl border border-slate-800 space-y-4 h-fit">
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-slate-850 pb-2">
-                Active Catalog Inventory
-              </h3>
-
-              {myProducts.length === 0 ? (
-                <p className="text-slate-500 text-xs py-4 text-center">You have not listed any catalog products yet.</p>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left border-collapse">
+                  <table className="w-full text-xs text-left">
                     <thead>
-                      <tr className="border-b border-slate-850 text-slate-500 uppercase tracking-wider font-bold">
-                        <th className="py-2.5 px-2">Product</th>
-                        <th className="py-2.5 px-2">Type</th>
-                        <th className="py-2.5 px-2">Category</th>
-                        <th className="py-2.5 px-2">Price</th>
-                        <th className="py-2.5 px-2">Stock</th>
+                      <tr className="border-b border-slate-800 text-slate-500 uppercase tracking-wider">
+                        <th className="py-3 px-3">Equipment</th>
+                        <th className="py-3 px-3">Start</th>
+                        <th className="py-3 px-3">End</th>
+                        <th className="py-3 px-3">Amount</th>
+                        <th className="py-3 px-3">Payment</th>
+                        <th className="py-3 px-3">Status</th>
+                        <th className="py-3 px-3">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-855 text-slate-350">
-                      {myProducts.map(p => (
-                        <tr key={p._id}>
-                          <td className="py-3 px-2 font-bold text-white">{p.name}</td>
-                          <td className="py-3 px-2 font-semibold text-emerald-400">{p.type}</td>
-                          <td className="py-3 px-2">{p.category}</td>
-                          <td className="py-3 px-2 font-bold text-white">₹{p.price}</td>
-                          <td className="py-3 px-2 font-extrabold">{p.stock} bags</td>
+                    <tbody className="divide-y divide-slate-900">
+                      {bookings.map(b => (
+                        <tr key={b._id} className="hover:bg-slate-900/30 transition-colors">
+                          <td className="py-3.5 px-3 font-bold text-white">{b.tool?.name || 'Equipment'}</td>
+                          <td className="py-3.5 px-3 text-slate-400">{new Date(b.startDate).toLocaleDateString()}</td>
+                          <td className="py-3.5 px-3 text-slate-400">{new Date(b.endDate).toLocaleDateString()}</td>
+                          <td className="py-3.5 px-3 font-extrabold text-emerald-400">₹{b.totalAmount}</td>
+                          <td className="py-3.5 px-3"><StatusBadge status={b.paymentStatus} /></td>
+                          <td className="py-3.5 px-3"><StatusBadge status={b.status} /></td>
+                          <td className="py-3.5 px-3">
+                            {b.status === 'Approved' && b.paymentStatus === 'Unpaid' && (
+                              <button
+                                onClick={() => handlePayNow(b)}
+                                disabled={payingBooking === b._id}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all flex items-center gap-1"
+                              >
+                                {payingBooking === b._id ? <RefreshCw size={10} className="animate-spin" /> : <CreditCard size={10} />}
+                                Pay ₹{b.totalAmount}
+                              </button>
+                            )}
+                            {b.status === 'Pending' && (
+                              <button onClick={() => handleBookingAction(b._id, 'Cancelled')}
+                                className="text-red-400 hover:text-red-300 text-[10px] font-bold transition-colors">
+                                Cancel
+                              </button>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -700,80 +551,535 @@ const Dashboards = () => {
                 </div>
               )}
             </div>
+          )}
 
-          </div>
-        </div>
-      )}
-
-      {/* 4. ADMIN VIEW */}
-      {user.role === 'Admin' && (
-        <div className="space-y-8 animate-fade-in">
-          
-          {/* KYC Records approval tray */}
-          <div className="glass p-6 rounded-3xl border border-slate-800 space-y-4">
-            <div className="space-y-1">
-              <h3 className="text-base font-bold text-white flex items-center gap-1.5">
-                <FileText className="text-emerald-400" size={20} /> KYC Registration Approvals
-              </h3>
-              <p className="text-xs text-slate-400">Review and verify Aadhaar uploads submitted by farmers and business shopkeepers.</p>
+          {/* ── FARMER PAYMENTS ────────────────────────────────────────────────── */}
+          {activeTab === 'payments' && (role === 'Farmer' || role === 'Buyer') && (
+            <div className="glass border border-slate-800 rounded-2xl p-6">
+              <SectionHeader icon={CreditCard} title="Payment History" subtitle="All your transactions on AgriRent Hub" />
+              {payments.length === 0 ? (
+                <div className="text-center py-12">
+                  <CreditCard size={32} className="text-slate-700 mx-auto mb-3" />
+                  <p className="text-slate-500 text-sm">No payment records yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {payments.map(p => (
+                    <div key={p._id} className="flex items-center justify-between bg-slate-900/40 border border-slate-800 rounded-xl px-4 py-3">
+                      <div>
+                        <p className="text-xs font-bold text-white">Payment #{p.paymentId?.slice(-8)}</p>
+                        <p className="text-[10px] text-slate-500 font-mono mt-0.5">{p.orderId}</p>
+                        <p className="text-[10px] text-slate-600">{new Date(p.createdAt).toLocaleString()}</p>
+                      </div>
+                      <div className="text-right space-y-1">
+                        <p className="text-base font-extrabold text-emerald-400">₹{p.amount}</p>
+                        <StatusBadge status={p.status} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
+          )}
 
-            {kycRecords.length === 0 ? (
-              <p className="text-slate-500 text-xs py-8 text-center">No KYC verification requests have been submitted yet.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-850 text-slate-500 uppercase tracking-wider font-bold">
-                      <th className="py-3 px-4">User</th>
-                      <th className="py-3 px-4">Role Request</th>
-                      <th className="py-3 px-4">Aadhaar</th>
-                      <th className="py-3 px-4">Submitted Date</th>
-                      <th className="py-3 px-4">Status</th>
-                      <th className="py-3 px-4 text-right">Review Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-850 text-slate-350">
-                    {kycRecords.map(rec => (
-                      <tr key={rec._id} className="hover:bg-slate-950/20">
-                        <td className="py-3.5 px-4 font-bold text-white">{rec.user?.name}</td>
-                        <td className="py-3.5 px-4 font-semibold text-emerald-400">{rec.verificationType}</td>
-                        <td className="py-3.5 px-4 font-mono">{rec.aadhaarNumber}</td>
-                        <td className="py-3.5 px-4">{new Date(rec.createdAt).toLocaleDateString()}</td>
-                        <td className="py-3.5 px-4">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            rec.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-400' :
-                            rec.status === 'Pending' ? 'bg-amber-500/10 text-amber-400' : 'bg-red-500/10 text-red-400'
-                          }`}>{rec.status}</span>
-                        </td>
-                        <td className="py-3.5 px-4 text-right">
-                          {rec.status === 'Pending' && (
-                            <div className="flex justify-end gap-1.5">
-                              <button
-                                onClick={() => handleReviewKYC(rec._id, 'Approved')}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-1 px-2.5 rounded transition-all"
-                              >
-                                Approve
-                              </button>
-                              <button
-                                onClick={() => handleReviewKYC(rec._id, 'Rejected')}
-                                className="bg-red-600 hover:bg-red-700 text-white font-semibold py-1 px-2.5 rounded transition-all"
-                              >
-                                Reject
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          {/* ── FARMER DISEASE SCANS ──────────────────────────────────────────── */}
+          {activeTab === 'disease' && (role === 'Farmer' || role === 'Buyer') && (
+            <div className="glass border border-slate-800 rounded-2xl p-6">
+              <SectionHeader icon={Activity} title="Disease Scan History" subtitle="Your AI-powered crop diagnoses" />
+              {diseaseScans.length === 0 ? (
+                <div className="text-center py-12">
+                  <Activity size={32} className="text-slate-700 mx-auto mb-3" />
+                  <p className="text-slate-500 text-sm">No scans yet. <a href="/disease-scanner" className="text-emerald-400 hover:underline">Scan now →</a></p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {diseaseScans.map(scan => (
+                    <div key={scan._id} className="bg-slate-900/40 border border-slate-800 rounded-xl p-4 space-y-2">
+                      <div className="flex justify-between items-start">
+                        <span className="text-[10px] font-bold text-emerald-400 uppercase">{scan.cropName}</span>
+                        <StatusBadge status={scan.severity} />
+                      </div>
+                      <p className="text-xs font-bold text-white">{scan.diseaseName}</p>
+                      <p className="text-[10px] text-slate-500">{scan.confidenceScore} confidence</p>
+                      <p className="text-[10px] text-slate-400 line-clamp-2">{scan.treatment}</p>
+                      <p className="text-[9px] text-slate-600">{new Date(scan.createdAt).toLocaleDateString()}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── TOOL OWNER OVERVIEW ──────────────────────────────────────────── */}
+          {activeTab === 'overview' && role === 'Tool Owner' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <StatCard label="Total Revenue" value={`₹${analytics.revenue}`} icon={DollarSign} color="bg-emerald-500/10 text-emerald-400" sub="All time earnings" />
+                <StatCard label="My Tools Listed" value={myProducts.length} icon={Package} color="bg-blue-500/10 text-blue-400" sub="Active listings" />
+                <StatCard label="Total Bookings" value={analytics.count} icon={Calendar} color="bg-purple-500/10 text-purple-400" sub="All time" />
+                <StatCard label="Pending Requests" value={analytics.pending} icon={Clock} color="bg-amber-500/10 text-amber-400" sub="Awaiting action" />
               </div>
-            )}
-          </div>
-        </div>
-      )}
 
+              {/* Revenue Chart */}
+              {monthlyRevenueData.length > 0 && (
+                <div className="glass border border-slate-800 rounded-2xl p-5">
+                  <SectionHeader icon={TrendingUp} title="Monthly Revenue" />
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={monthlyRevenueData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                      <XAxis dataKey="month" stroke="#475569" tick={{ fontSize: 10 }} />
+                      <YAxis stroke="#475569" tick={{ fontSize: 10 }} />
+                      <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', color: '#e2e8f0', fontSize: '11px' }} />
+                      <Bar dataKey="revenue" fill="#10b981" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+
+              {/* Booking Status Pie */}
+              {bookingStatusData.length > 0 && (
+                <div className="glass border border-slate-800 rounded-2xl p-5">
+                  <SectionHeader icon={BarChart3} title="Booking Status Breakdown" />
+                  <div className="flex flex-wrap items-center gap-8">
+                    <ResponsiveContainer width={180} height={180}>
+                      <PieChart>
+                        <Pie data={bookingStatusData} cx="50%" cy="50%" innerRadius={45} outerRadius={75} dataKey="value">
+                          {bookingStatusData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                        </Pie>
+                        <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', fontSize: '11px' }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="space-y-2">
+                      {bookingStatusData.map(d => (
+                        <div key={d.name} className="flex items-center gap-3">
+                          <span className="h-3 w-3 rounded-full" style={{ backgroundColor: d.color }} />
+                          <span className="text-xs text-slate-300 font-semibold">{d.name}</span>
+                          <span className="text-xs font-extrabold text-white ml-auto">{d.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── TOOL OWNER REQUESTS ───────────────────────────────────────────── */}
+          {activeTab === 'requests' && role === 'Tool Owner' && (
+            <div className="glass border border-slate-800 rounded-2xl p-6">
+              <SectionHeader icon={Clock} title="Booking Requests" subtitle="Approve or reject farmer bookings" />
+              {bookings.filter(b => b.status === 'Pending').length === 0 ? (
+                <div className="text-center py-12">
+                  <CheckCircle size={32} className="text-emerald-700 mx-auto mb-3" />
+                  <p className="text-slate-500 text-sm">No pending requests. All caught up!</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {bookings.filter(b => b.status === 'Pending').map(b => (
+                    <div key={b._id} className="bg-slate-900/40 border border-slate-800 rounded-xl p-4 flex items-center justify-between gap-4 flex-wrap">
+                      <div className="space-y-1">
+                        <p className="text-xs font-bold text-white">{b.tool?.name}</p>
+                        <p className="text-[10px] text-slate-400">Farmer: {b.farmer?.name} • {b.farmer?.phone}</p>
+                        <p className="text-[10px] text-slate-400">
+                          {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <p className="text-lg font-extrabold text-emerald-400">₹{b.totalAmount}</p>
+                        <button onClick={() => handleBookingAction(b._id, 'Approved')}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white p-2 rounded-lg transition-all" title="Approve">
+                          <Check size={14} />
+                        </button>
+                        <button onClick={() => handleBookingAction(b._id, 'Rejected')}
+                          className="bg-red-600 hover:bg-red-700 text-white p-2 rounded-lg transition-all" title="Reject">
+                          <X size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* History */}
+              {bookings.filter(b => b.status !== 'Pending').length > 0 && (
+                <div className="mt-6 pt-6 border-t border-slate-800">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Booking History</p>
+                  <div className="space-y-2">
+                    {bookings.filter(b => b.status !== 'Pending').map(b => (
+                      <div key={b._id} className="flex items-center justify-between bg-slate-950/40 border border-slate-900 rounded-xl px-4 py-3">
+                        <div>
+                          <p className="text-xs font-bold text-white">{b.tool?.name}</p>
+                          <p className="text-[10px] text-slate-500">{b.farmer?.name}</p>
+                        </div>
+                        <div className="text-right space-y-1">
+                          <StatusBadge status={b.status} />
+                          <p className="text-xs text-emerald-400 font-bold">₹{b.totalAmount}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── TOOL OWNER - MY TOOLS ─────────────────────────────────────────── */}
+          {activeTab === 'my-tools' && role === 'Tool Owner' && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Add Tool Form */}
+              <div className="glass p-5 rounded-2xl border border-slate-800 space-y-4 h-fit">
+                <SectionHeader icon={PlusCircle} title="Add New Tool" subtitle="List equipment for rent" />
+                <form onSubmit={handleAddTool} className="space-y-3">
+                  {[
+                    { label: 'Equipment Name', key: 'name', placeholder: 'e.g. John Deere Tractor' },
+                    { label: 'Description', key: 'description', placeholder: 'HP, condition, fuel type...' },
+                  ].map(({ label, key, placeholder }) => (
+                    <div key={key} className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</label>
+                      <input type="text" required placeholder={placeholder}
+                        value={toolForm[key]} onChange={e => setToolForm(p => ({ ...p, [key]: e.target.value }))}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                    </div>
+                  ))}
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Category</label>
+                      <select value={toolForm.category} onChange={e => setToolForm(p => ({ ...p, category: e.target.value }))}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-2 text-xs text-slate-300 focus:outline-none">
+                        {['Tractor', 'Rotavator', 'Cultivator', 'Seeder', 'Harvester', 'Sprayer', 'Water Pump'].map(c => <option key={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Power (HP)</label>
+                      <input type="text" placeholder="50 HP" value={toolForm.power}
+                        onChange={e => setToolForm(p => ({ ...p, power: e.target.value }))}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-2 text-xs text-white focus:outline-none" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    {[['Daily', 'daily'], ['Weekly', 'weekly'], ['Monthly', 'monthly']].map(([label, key]) => (
+                      <div key={key} className="space-y-1">
+                        <label className="text-[9px] font-bold text-slate-400 uppercase">{label} ₹</label>
+                        <input type="number" required placeholder="0" value={toolForm[key]}
+                          onChange={e => setToolForm(p => ({ ...p, [key]: e.target.value }))}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-2 text-xs text-white focus:outline-none" />
+                      </div>
+                    ))}
+                  </div>
+
+                  <button type="submit" disabled={addingTool}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-800 text-white font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all">
+                    {addingTool ? 'Publishing...' : 'Publish Tool Listing'}
+                  </button>
+                </form>
+              </div>
+
+              {/* My Tools List */}
+              <div className="lg:col-span-2 glass border border-slate-800 rounded-2xl p-5">
+                <SectionHeader icon={Package} title={`My Tools (${myProducts.length})`} subtitle="Active listings" />
+                {myProducts.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Package size={32} className="text-slate-700 mx-auto mb-3" />
+                    <p className="text-slate-500 text-sm">No tools listed yet. Add your first tool!</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {myProducts.map(tool => (
+                      <div key={tool._id} className="bg-slate-900/40 border border-slate-800 rounded-xl p-4 space-y-3 hover:border-slate-700 transition-all">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="text-xs font-bold text-white">{tool.name}</p>
+                            <p className="text-[10px] text-emerald-400 font-semibold uppercase">{tool.category}</p>
+                          </div>
+                          <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded font-bold">
+                            Active
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-500">{tool.specifications?.power}</p>
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                          {[
+                            { label: 'Daily', val: tool.rentRates?.daily },
+                            { label: 'Weekly', val: tool.rentRates?.weekly },
+                            { label: 'Monthly', val: tool.rentRates?.monthly },
+                          ].map(({ label, val }) => (
+                            <div key={label} className="bg-slate-950/60 rounded-lg p-2">
+                              <p className="text-[9px] text-slate-500 uppercase font-bold">{label}</p>
+                              <p className="text-xs font-extrabold text-emerald-400">₹{val}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── SHOPKEEPER OVERVIEW ───────────────────────────────────────────── */}
+          {activeTab === 'overview' && role === 'Shopkeeper' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <StatCard label="Products Listed" value={myProducts.length} icon={ShoppingBag} color="bg-emerald-500/10 text-emerald-400" sub="Active catalog" />
+                <StatCard label="Total Stock" value={myProducts.reduce((a, p) => a + (p.stock || 0), 0)} icon={Package} color="bg-blue-500/10 text-blue-400" sub="Units available" />
+                <StatCard label="Avg Price" value={`₹${myProducts.length ? Math.round(myProducts.reduce((a, p) => a + p.price, 0) / myProducts.length) : 0}`} icon={DollarSign} color="bg-amber-500/10 text-amber-400" sub="Per product" />
+              </div>
+
+              {/* Category breakdown */}
+              {myProducts.length > 0 && (() => {
+                const cats = myProducts.reduce((acc, p) => {
+                  acc[p.type || p.category || 'Other'] = (acc[p.type || p.category || 'Other'] || 0) + 1;
+                  return acc;
+                }, {});
+                const catData = Object.entries(cats).map(([name, value]) => ({ name, value }));
+                return (
+                  <div className="glass border border-slate-800 rounded-2xl p-5">
+                    <SectionHeader icon={BarChart3} title="Products by Category" />
+                    <div className="flex flex-wrap gap-8 items-center">
+                      <ResponsiveContainer width={180} height={180}>
+                        <PieChart>
+                          <Pie data={catData} cx="50%" cy="50%" innerRadius={45} outerRadius={75} dataKey="value">
+                            {catData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                          </Pie>
+                          <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', fontSize: '11px' }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="space-y-2">
+                        {catData.map((d, i) => (
+                          <div key={d.name} className="flex items-center gap-3">
+                            <span className="h-3 w-3 rounded-full" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
+                            <span className="text-xs text-slate-300 font-semibold">{d.name}</span>
+                            <span className="text-xs font-extrabold text-white ml-auto">{d.value} products</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          {/* ── SHOPKEEPER PRODUCTS ───────────────────────────────────────────── */}
+          {activeTab === 'products' && role === 'Shopkeeper' && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Add Product Form */}
+              <div className="glass p-5 rounded-2xl border border-slate-800 space-y-4 h-fit">
+                <SectionHeader icon={PlusCircle} title="Add New Product" subtitle="List seeds, fertilizers, etc." />
+                <form onSubmit={handleAddProduct} className="space-y-3">
+                  {[
+                    { label: 'Product Name', key: 'name', placeholder: 'e.g. DAP Fertilizer 50kg' },
+                    { label: 'Description', key: 'description', placeholder: 'Nutrients, brand, use-case...' },
+                    { label: 'Category', key: 'category', placeholder: 'e.g. NPK, Wheat, Organic' },
+                  ].map(({ label, key, placeholder }) => (
+                    <div key={key} className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</label>
+                      <input type="text" required placeholder={placeholder}
+                        value={prodForm[key]} onChange={e => setProdForm(p => ({ ...p, [key]: e.target.value }))}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                    </div>
+                  ))}
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Type</label>
+                    <select value={prodForm.type} onChange={e => setProdForm(p => ({ ...p, type: e.target.value }))}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-300 focus:outline-none">
+                      {['Seed', 'Fertilizer', 'Pesticide', 'Equipment Part'].map(t => <option key={t}>{t}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Price ₹</label>
+                      <input type="number" required value={prodForm.price}
+                        onChange={e => setProdForm(p => ({ ...p, price: e.target.value }))}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-xs text-white focus:outline-none" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Stock</label>
+                      <input type="number" required value={prodForm.stock}
+                        onChange={e => setProdForm(p => ({ ...p, stock: e.target.value }))}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-xs text-white focus:outline-none" />
+                    </div>
+                  </div>
+
+                  <button type="submit" disabled={addingProd}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-800 text-white font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all">
+                    {addingProd ? 'Publishing...' : 'Publish Product'}
+                  </button>
+                </form>
+              </div>
+
+              {/* Products List */}
+              <div className="lg:col-span-2 glass border border-slate-800 rounded-2xl p-5">
+                <SectionHeader icon={ShoppingBag} title={`Catalog (${myProducts.length})`} />
+                {myProducts.length === 0 ? (
+                  <div className="text-center py-12 text-slate-500">
+                    <ShoppingBag size={32} className="mx-auto mb-3 text-slate-700" />
+                    <p className="text-sm">No products listed yet.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-left">
+                      <thead>
+                        <tr className="border-b border-slate-800 text-slate-500 uppercase tracking-wider">
+                          <th className="py-3 px-2">Product</th>
+                          <th className="py-3 px-2">Type</th>
+                          <th className="py-3 px-2">Category</th>
+                          <th className="py-3 px-2">Price</th>
+                          <th className="py-3 px-2">Stock</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-900">
+                        {myProducts.map(p => (
+                          <tr key={p._id} className="hover:bg-slate-900/30">
+                            <td className="py-3 px-2 font-bold text-white">{p.name}</td>
+                            <td className="py-3 px-2 text-emerald-400 font-semibold">{p.type}</td>
+                            <td className="py-3 px-2 text-slate-400">{p.category}</td>
+                            <td className="py-3 px-2 font-extrabold text-white">₹{p.price}</td>
+                            <td className="py-3 px-2 font-bold text-slate-300">{p.stock} units</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── ADMIN USERS ───────────────────────────────────────────────────── */}
+          {activeTab === 'users' && role === 'Admin' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <StatCard label="Total Users" value={allUsers.length} icon={Users} color="bg-emerald-500/10 text-emerald-400" />
+                <StatCard label="Farmers" value={allUsers.filter(u => u.role === 'Farmer').length} icon={Leaf} color="bg-blue-500/10 text-blue-400" />
+                <StatCard label="Tool Owners" value={allUsers.filter(u => u.role === 'Tool Owner').length} icon={Package} color="bg-amber-500/10 text-amber-400" />
+                <StatCard label="Shopkeepers" value={allUsers.filter(u => u.role === 'Shopkeeper').length} icon={ShoppingBag} color="bg-purple-500/10 text-purple-400" />
+              </div>
+
+              <div className="glass border border-slate-800 rounded-2xl p-6">
+                <SectionHeader icon={Users} title="All Users" subtitle="Platform user management" />
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead>
+                      <tr className="border-b border-slate-800 text-slate-500 uppercase tracking-wider">
+                        <th className="py-3 px-3">Name</th>
+                        <th className="py-3 px-3">Email</th>
+                        <th className="py-3 px-3">Phone</th>
+                        <th className="py-3 px-3">Role</th>
+                        <th className="py-3 px-3">KYC</th>
+                        <th className="py-3 px-3">Joined</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-900">
+                      {allUsers.map(u => (
+                        <tr key={u._id} className="hover:bg-slate-900/30">
+                          <td className="py-3 px-3 font-bold text-white">{u.name}</td>
+                          <td className="py-3 px-3 text-slate-400">{u.email}</td>
+                          <td className="py-3 px-3 text-slate-400">{u.phone}</td>
+                          <td className="py-3 px-3">
+                            <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">{u.role}</span>
+                          </td>
+                          <td className="py-3 px-3"><StatusBadge status={u.kycStatus || 'Not Submitted'} /></td>
+                          <td className="py-3 px-3 text-slate-500">{new Date(u.createdAt).toLocaleDateString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── ADMIN KYC ─────────────────────────────────────────────────────── */}
+          {activeTab === 'kyc' && role === 'Admin' && (
+            <div className="glass border border-slate-800 rounded-2xl p-6">
+              <SectionHeader icon={FileText} title="KYC Verification Requests" subtitle="Review and approve identity documents" />
+              {kycRecords.length === 0 ? (
+                <div className="text-center py-12">
+                  <CheckCircle size={32} className="text-emerald-700 mx-auto mb-3" />
+                  <p className="text-slate-500 text-sm">No pending KYC requests.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead>
+                      <tr className="border-b border-slate-800 text-slate-500 uppercase tracking-wider">
+                        <th className="py-3 px-3">User</th>
+                        <th className="py-3 px-3">Type</th>
+                        <th className="py-3 px-3">Aadhaar</th>
+                        <th className="py-3 px-3">Date</th>
+                        <th className="py-3 px-3">Status</th>
+                        <th className="py-3 px-3 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-900">
+                      {kycRecords.map(rec => (
+                        <tr key={rec._id} className="hover:bg-slate-900/30">
+                          <td className="py-3 px-3 font-bold text-white">{rec.user?.name}</td>
+                          <td className="py-3 px-3 text-emerald-400 font-semibold">{rec.verificationType}</td>
+                          <td className="py-3 px-3 font-mono text-slate-300">{rec.aadhaarNumber}</td>
+                          <td className="py-3 px-3 text-slate-500">{new Date(rec.createdAt).toLocaleDateString()}</td>
+                          <td className="py-3 px-3"><StatusBadge status={rec.status} /></td>
+                          <td className="py-3 px-3 text-right">
+                            {rec.status === 'Pending' && (
+                              <div className="flex gap-2 justify-end">
+                                <button onClick={() => handleReviewKYC(rec._id, 'Approved')}
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all">
+                                  Approve
+                                </button>
+                                <button onClick={() => handleReviewKYC(rec._id, 'Rejected')}
+                                  className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all">
+                                  Reject
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── ANALYTICS TAB (Tool Owner / Shopkeeper / Admin) ──────────────── */}
+          {activeTab === 'analytics' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <StatCard label="Revenue" value={`₹${analytics.revenue}`} icon={DollarSign} color="bg-emerald-500/10 text-emerald-400" sub="Total earned" />
+                <StatCard label="Items" value={analytics.count || myProducts.length} icon={Package} color="bg-blue-500/10 text-blue-400" sub="Active listings" />
+                <StatCard label="Bookings" value={bookings.length || analytics.count} icon={Calendar} color="bg-purple-500/10 text-purple-400" sub="All time" />
+                <StatCard label="Pending" value={analytics.pending || 0} icon={Clock} color="bg-amber-500/10 text-amber-400" sub="Needs action" />
+              </div>
+
+              {monthlyRevenueData.length > 0 ? (
+                <div className="glass border border-slate-800 rounded-2xl p-5">
+                  <SectionHeader icon={TrendingUp} title="Revenue Trend" />
+                  <ResponsiveContainer width="100%" height={250}>
+                    <LineChart data={monthlyRevenueData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                      <XAxis dataKey="month" stroke="#475569" tick={{ fontSize: 10 }} />
+                      <YAxis stroke="#475569" tick={{ fontSize: 10 }} />
+                      <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', color: '#e2e8f0', fontSize: '11px' }} />
+                      <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2.5} dot={{ fill: '#10b981', strokeWidth: 2 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="glass border border-slate-800 rounded-2xl p-8 text-center">
+                  <TrendingUp size={32} className="text-slate-700 mx-auto mb-3" />
+                  <p className="text-slate-500 text-sm">Revenue data will appear here once you have approved bookings or sales.</p>
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 };

@@ -8,7 +8,8 @@ const diseaseReportSchema = new mongoose.Schema({
   },
   cropName: {
     type: String,
-    required: true
+    required: true,
+    default: 'Unknown'
   },
   imageUrl: {
     type: String,
@@ -20,7 +21,8 @@ const diseaseReportSchema = new mongoose.Schema({
   },
   severity: {
     type: String,
-    required: true
+    required: true,
+    enum: ['Healthy', 'Low', 'Moderate', 'High', 'Severe']
   },
   confidenceScore: {
     type: String,
@@ -31,7 +33,25 @@ const diseaseReportSchema = new mongoose.Schema({
     required: true
   },
   prevention: {
-    type: String
+    type: String,
+    default: ''
+  },
+  fertilizer: {
+    type: String,
+    default: ''
+  },
+  pesticide: {
+    type: String,
+    default: ''
+  },
+  explanation: {
+    type: String,
+    default: ''
+  },
+  analysisMethod: {
+    type: String,
+    enum: ['gemini-vision', 'rule-based', 'simulation'],
+    default: 'gemini-vision'
   }
 }, {
   timestamps: true

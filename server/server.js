@@ -107,6 +107,9 @@ const gameRoutes = require('./routes/gameRoutes');
 const chatRoutes = require('./routes/chatRoutes');
 const wishlistRoutes = require('./routes/wishlistRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const diseaseRoutes = require('./routes/diseaseRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
+const weatherRoutes = require('./routes/weatherRoutes');
 
 // Bind Routes
 app.use('/api/auth', authRoutes);
@@ -120,6 +123,9 @@ app.use('/api/game', gameRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/disease', diseaseRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/weather', weatherRoutes);
 
 // Base Route
 app.get('/', (req, res) => {

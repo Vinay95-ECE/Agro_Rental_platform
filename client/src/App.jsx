@@ -8,7 +8,6 @@ import { store } from './store';
 import { logout, authSuccess, updateGamification } from './store/authSlice';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 
-// Import Modular Pages
 import Home from './pages/Home';
 import Rentals from './pages/Rentals';
 import Shop from './pages/Shop';
@@ -21,6 +20,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Chat from './pages/Chat';
 import Dashboards from './pages/Dashboards';
+import WeatherPage from './pages/WeatherPage';
 
 import { Bell, LogOut, Award, Shield, User as UserIcon, MessageCircle } from 'lucide-react';
 
@@ -142,6 +142,7 @@ const Navigation = () => {
             
             <Link to="/ai-advisory" className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-300 hover:text-white transition-colors">{t('aiAssistant')}</Link>
             <Link to="/disease-scanner" className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-300 hover:text-white transition-colors">{t('diseaseDetect')}</Link>
+            <Link to="/weather" className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-300 hover:text-white transition-colors">🌦️ Weather</Link>
             <Link to="/price-prediction" className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-300 hover:text-white transition-colors">{t('pricePredict')}</Link>
             <Link to="/quiz" className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-300 hover:text-white transition-colors">{t('dailyQuiz')}</Link>
             
@@ -254,10 +255,65 @@ const Navigation = () => {
 
 const Footer = () => {
   return (
-    <footer className="bg-slate-950 border-t border-slate-900 py-10 text-center text-slate-500 text-xs">
-      <p className="max-w-md mx-auto leading-relaxed">
-        © {new Date().getFullYear()} AgriRent Hub. All rights reserved. Build direct connectivity between Tool Owners, Farmers, and Shopkeepers.
-      </p>
+    <footer className="bg-slate-950 border-t border-slate-900 py-12 mt-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
+          {/* Brand */}
+          <div className="col-span-2 md:col-span-1 space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">🌾</span>
+              <span className="text-white font-extrabold tracking-tight">AgriRent Hub</span>
+            </div>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Connecting farmers, tool owners, and shopkeepers across rural India through technology.
+            </p>
+            <div className="flex gap-2 text-[10px]">
+              <span className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold">Gemini AI</span>
+              <span className="bg-blue-500/10 border border-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full font-bold">Razorpay</span>
+              <span className="bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 px-2 py-0.5 rounded-full font-bold">OpenWeather</span>
+            </div>
+          </div>
+          {/* Marketplace */}
+          <div className="space-y-3">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Marketplace</p>
+            <ul className="space-y-2">
+              {[['Rent Equipment', '/rentals'], ['Buy Products', '/shop'], ['Sell Crops', '/crops'], ['Price Prediction', '/price-prediction']].map(([label, href]) => (
+                <li key={label}><Link to={href} className="text-xs text-slate-500 hover:text-emerald-400 transition-colors">{label}</Link></li>
+              ))}
+            </ul>
+          </div>
+          {/* AI Tools */}
+          <div className="space-y-3">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">AI Tools</p>
+            <ul className="space-y-2">
+              {[['Disease Scanner', '/disease-scanner'], ['AI Agronomist', '/ai-advisory'], ['Weather Forecast', '/weather'], ['Daily Quiz', '/quiz']].map(([label, href]) => (
+                <li key={label}><Link to={href} className="text-xs text-slate-500 hover:text-emerald-400 transition-colors">{label}</Link></li>
+              ))}
+            </ul>
+          </div>
+          {/* Account */}
+          <div className="space-y-3">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Account</p>
+            <ul className="space-y-2">
+              {[['Dashboard', '/dashboard'], ['Community Chat', '/chat'], ['Login', '/login'], ['Register', '/register']].map(([label, href]) => (
+                <li key={label}><Link to={href} className="text-xs text-slate-500 hover:text-emerald-400 transition-colors">{label}</Link></li>
+              ))}
+            </ul>
+          </div>
+        </div>
+        <div className="border-t border-slate-900 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p className="text-[10px] text-slate-600">
+            © {new Date().getFullYear()} AgriRent Hub. All rights reserved. Built with MERN + AI.
+          </p>
+          <div className="flex items-center gap-4 text-[10px] text-slate-600">
+            <span>🌾 Powered by Gemini 2.0</span>
+            <span>•</span>
+            <span>🌦️ Live Weather</span>
+            <span>•</span>
+            <span>💳 Razorpay Secure</span>
+          </div>
+        </div>
+      </div>
     </footer>
   );
 };
@@ -278,6 +334,7 @@ const MainApp = () => {
           <Route path="/disease-scanner" element={<DiseaseScanner />} />
           <Route path="/price-prediction" element={<PricePrediction />} />
           <Route path="/quiz" element={<Quiz />} />
+          <Route path="/weather" element={<WeatherPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/chat" element={<Chat />} />

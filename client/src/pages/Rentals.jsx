@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import axios from 'axios';
-import { MapPin, Shield, Calendar, Layers, Sliders, AlertTriangle } from 'lucide-react';
+import { MapPin, Shield, Calendar, Layers, Sliders, AlertTriangle, CreditCard } from 'lucide-react';
 
 const Rentals = () => {
   const { user, token } = useSelector((state) => state.auth);
@@ -190,11 +190,10 @@ const Rentals = () => {
       });
 
       if (response.data.success) {
-        alert(`Booking requested successfully! Total Amount: ₹${totalAmount}. Please await owner approval.`);
+        alert(`✅ Booking requested! Total: ₹${totalAmount}\n\nThe owner will review your request. Once approved, go to Dashboard → Bookings to pay via Razorpay.`);
         setStartDate('');
         setEndDate('');
         setNotes('');
-        // Refresh calendar
         setToolBookings([...toolBookings, response.data.booking]);
       }
     } catch (error) {
