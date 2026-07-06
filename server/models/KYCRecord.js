@@ -14,7 +14,7 @@ const kycRecordSchema = new mongoose.Schema({
   },
   panNumber: {
     type: String,
-    match: [/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, 'Please provide a valid PAN number'],
+    match: [/^(?:[A-Z]{5}[0-9]{4}[A-Z]{1})?$/, 'Please provide a valid PAN number'],
     default: ''
   },
   verificationType: {
@@ -39,7 +39,7 @@ const kycRecordSchema = new mongoose.Schema({
   // Timestamps for audit
   submittedAt: { type: Date },
   reviewedAt: { type: Date },
-  reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 }, { timestamps: true });
 
 kycRecordSchema.index({ user: 1 });
