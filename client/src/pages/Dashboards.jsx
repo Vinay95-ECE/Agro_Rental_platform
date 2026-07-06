@@ -10,8 +10,12 @@ import {
   BarChart3, Users, DollarSign, ShoppingBag, ShieldCheck, FileText, Check, X,
   PlusCircle, Trash2, Star, TrendingUp, Package, Calendar, Activity,
   Leaf, Bot, Award, CreditCard, RefreshCw, Edit2, AlertTriangle,
-  CheckCircle, Clock, Zap, Eye
+  CheckCircle, Clock, Zap, Eye, MapPin
 } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
+import { ImageUpload, MultiImageUpload } from '../components/ImageUpload';
+import { SkeletonStatCard, PageLoader } from '../components/Skeleton';
+
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 const StatCard = ({ label, value, icon: Icon, color, sub }) => (
@@ -66,6 +70,7 @@ const CHART_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#0
 const Dashboards = () => {
   const { user, token } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
+  const toast = useToast();
 
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
@@ -78,22 +83,33 @@ const Dashboards = () => {
   const [diseaseScans, setDiseaseScans] = useState([]);
   const [analytics, setAnalytics] = useState({ revenue: 0, count: 0, pending: 0 });
   const [allUsers, setAllUsers] = useState([]);
+  const [adminStats, setAdminStats] = useState(null);
 
   // KYC form
   const [aadhaar, setAadhaar] = useState('');
   const [kycType, setKycType] = useState('Farmer');
+  const [kycAadhaarImage, setKycAadhaarImage] = useState('');
+  const [kycSelfieImage, setKycSelfieImage] = useState('');
   const [submittingKYC, setSubmittingKYC] = useState(false);
 
   // Tool form
-  const [toolForm, setToolForm] = useState({ name: '', description: '', category: 'Tractor', daily: '', weekly: '', monthly: '', power: '', fuel: 'Diesel' });
+  const [toolForm, setToolForm] = useState({
+    name: '', description: '', category: 'Tractor',
+    daily: '', weekly: '', monthly: '',
+    power: '', fuel: 'Diesel', brand: '',
+    village: user?.village || '', district: user?.district || '', state: user?.state || ''
+  });
+  const [toolImages, setToolImages] = useState([]);
   const [addingTool, setAddingTool] = useState(false);
 
   // Product form
   const [prodForm, setProdForm] = useState({ name: '', description: '', type: 'Seed', category: '', price: '', stock: '' });
+  const [prodImages, setProdImages] = useState([]);
   const [addingProd, setAddingProd] = useState(false);
 
   // Razorpay payment for pending booking
   const [payingBooking, setPayingBooking] = useState(null);
+
 
   const loadData = async () => {
     if (!token || !user) return;
@@ -112,7 +128,7 @@ const Dashboards = () => {
       } else if (user.role === 'Tool Owner') {
         const [reqRes, toolsRes] = await Promise.allSettled([
           axios.get('/api/bookings/requests', { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get('/api/tools')
+          axios.get('/api/tools/my-tools', { headers: { Authorization: `Bearer ${token}` } })
         ]);
         if (reqRes.status === 'fulfilled' && reqRes.value.data.success) {
           const allBookings = reqRes.value.data.bookings;
@@ -123,8 +139,7 @@ const Dashboards = () => {
           setAnalytics({ revenue, count: allBookings.length, pending });
         }
         if (toolsRes.status === 'fulfilled' && toolsRes.value.data.success) {
-          const mine = toolsRes.value.data.tools.filter(t => t.owner?._id === user._id || t.owner === user._id);
-          setMyProducts(mine);
+          setMyProducts(toolsRes.value.data.tools);
         }
 
       } else if (user.role === 'Shopkeeper') {
@@ -137,12 +152,14 @@ const Dashboards = () => {
         }
 
       } else if (user.role === 'Admin') {
-        const [kycRes, usersRes] = await Promise.allSettled([
+        const [kycRes, usersRes, statsRes] = await Promise.allSettled([
           axios.get('/api/kyc/records', { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get('/api/auth/users', { headers: { Authorization: `Bearer ${token}` } })
+          axios.get('/api/auth/users', { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get('/api/admin/stats', { headers: { Authorization: `Bearer ${token}` } })
         ]);
         if (kycRes.status === 'fulfilled' && kycRes.value.data.success) setKycRecords(kycRes.value.data.records);
         if (usersRes.status === 'fulfilled' && usersRes.value.data.success) setAllUsers(usersRes.value.data.users);
+        if (statsRes.status === 'fulfilled' && statsRes.value.data.success) setAdminStats(statsRes.value.data);
       }
     } catch (err) {
       console.error('Dashboard data load error:', err);
@@ -156,36 +173,60 @@ const Dashboards = () => {
   // ── KYC Submit ─────────────────────────────────────────────────────────────
   const handleKycSubmit = async (e) => {
     e.preventDefault();
-    if (!aadhaar || aadhaar.length !== 12) { alert('Please provide a valid 12-digit Aadhaar number.'); return; }
+    if (!aadhaar || aadhaar.length !== 12 || !/^\d{12}$/.test(aadhaar)) {
+      toast.error('Please provide a valid 12-digit Aadhaar number (digits only).');
+      return;
+    }
+    if (!kycAadhaarImage) {
+      toast.error('Please upload your Aadhaar card image.', 'Image Required');
+      return;
+    }
     setSubmittingKYC(true);
     try {
       const res = await axios.post('/api/kyc/submit', {
-        aadhaarNumber: aadhaar, verificationType: kycType,
-        documentImage: 'https://images.unsplash.com/photo-1592982537447-7440770cbfc9?auto=format&fit=crop&q=80&w=200'
+        aadhaarNumber: aadhaar,
+        verificationType: kycType,
+        aadhaarImage: kycAadhaarImage,
+        selfieImage: kycSelfieImage || ''
       }, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.data.success) { alert('KYC submitted! Pending admin review.'); dispatch(updateKYC('Pending')); }
-    } catch (err) { alert(err.response?.data?.message || 'Error submitting KYC.'); }
-    finally { setSubmittingKYC(false); }
+      if (res.data.success) {
+        toast.success('KYC submitted successfully! Our team will review within 24 hours.');
+        dispatch(updateKYC('Pending'));
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Error submitting KYC. Please try again.');
+    } finally {
+      setSubmittingKYC(false);
+    }
   };
+
 
   // ── Admin KYC Review ───────────────────────────────────────────────────────
   const handleReviewKYC = async (id, status) => {
     try {
       await axios.put(`/api/kyc/review/${id}`, {
-        status, rejectionReason: status === 'Rejected' ? 'Documents could not be verified.' : ''
+        status,
+        rejectionReason: status === 'Rejected' ? 'Documents could not be verified. Please resubmit clear photos.' : ''
       }, { headers: { Authorization: `Bearer ${token}` } });
-      alert(`KYC ${status}`);
+      toast.success(`KYC ${status.toLowerCase()} successfully.`, `KYC ${status}`);
       loadData();
-    } catch { alert('Error updating KYC.'); }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Error updating KYC status.');
+    }
   };
+
 
   // ── Booking Status ─────────────────────────────────────────────────────────
   const handleBookingAction = async (id, status) => {
     try {
       await axios.put(`/api/bookings/${id}/status`, { status }, { headers: { Authorization: `Bearer ${token}` } });
+      toast.success(`Booking ${status.toLowerCase()} successfully.`);
       loadData();
-    } catch (err) { alert(err.response?.data?.message || 'Error updating booking.'); }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Error updating booking status.');
+    }
   };
+
 
   // ── Razorpay Payment ───────────────────────────────────────────────────────
   const handlePayNow = async (booking) => {
@@ -198,7 +239,6 @@ const Dashboards = () => {
       const { orderId, amount, keyId, demo } = orderRes.data;
 
       if (demo) {
-        // Demo mode: simulate payment
         await axios.post('/api/payments/verify', {
           razorpay_order_id: orderId,
           razorpay_payment_id: `pay_demo_${Date.now()}`,
@@ -206,7 +246,7 @@ const Dashboards = () => {
           bookingId: booking._id,
           amount: booking.totalAmount
         }, { headers: { Authorization: `Bearer ${token}` } });
-        alert('✅ Payment Successful! (Demo Mode) Booking Confirmed.');
+        toast.success('Payment successful! Booking confirmed.', 'Payment Complete ✅');
         loadData();
         return;
       }
@@ -218,9 +258,7 @@ const Dashboards = () => {
       document.body.appendChild(script);
       script.onload = () => {
         const rzp = new window.Razorpay({
-          key: keyId,
-          amount,
-          currency: 'INR',
+          key: keyId, amount, currency: 'INR',
           name: 'AgriRent Hub',
           description: `Booking: ${booking.tool?.name || 'Equipment'}`,
           order_id: orderId,
@@ -229,9 +267,11 @@ const Dashboards = () => {
               await axios.post('/api/payments/verify', {
                 ...response, bookingId: booking._id, amount: booking.totalAmount
               }, { headers: { Authorization: `Bearer ${token}` } });
-              alert('✅ Payment Successful! Booking Confirmed.');
+              toast.success('Payment successful! Booking confirmed.', 'Payment Complete ✅');
               loadData();
-            } catch { alert('Payment verification failed. Contact support.'); }
+            } catch {
+              toast.error('Payment verification failed. Contact support.');
+            }
           },
           prefill: { name: user.name, email: user.email, contact: user.phone },
           theme: { color: '#10b981' }
@@ -239,45 +279,97 @@ const Dashboards = () => {
         rzp.open();
       };
     } catch (err) {
-      alert(err.response?.data?.message || 'Payment initiation failed.');
+      toast.error(err.response?.data?.message || 'Payment initiation failed. Please try again.');
     } finally {
       setPayingBooking(null);
     }
   };
 
+
   // ── Add Tool ───────────────────────────────────────────────────────────────
   const handleAddTool = async (e) => {
     e.preventDefault();
+    if (!toolForm.name || !toolForm.daily) {
+      toast.error('Tool name and daily rate are required.'); return;
+    }
+    if (toolImages.length === 0) {
+      toast.error('Please upload at least one image of the tool.', 'Image Required'); return;
+    }
     setAddingTool(true);
     try {
+      // Try to get user's location
+      let lat = 28.6139, lng = 77.2090;
+      try {
+        const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 }));
+        lat = pos.coords.latitude;
+        lng = pos.coords.longitude;
+      } catch { /* use defaults */ }
+
       await axios.post('/api/tools', {
-        name: toolForm.name, description: toolForm.description,
-        category: toolForm.category, coordinates: [77.2090, 28.6139],
-        rentRates: { daily: Number(toolForm.daily), weekly: Number(toolForm.weekly), monthly: Number(toolForm.monthly) },
-        specifications: { power: toolForm.power, fuelType: toolForm.fuel }
+        name: toolForm.name.trim(),
+        description: toolForm.description.trim(),
+        category: toolForm.category,
+        images: toolImages,
+        village: toolForm.village,
+        district: toolForm.district,
+        state: toolForm.state,
+        latitude: lat,
+        longitude: lng,
+        rentRates: {
+          daily: Number(toolForm.daily),
+          weekly: Number(toolForm.weekly) || Number(toolForm.daily) * 6,
+          monthly: Number(toolForm.monthly) || Number(toolForm.daily) * 22
+        },
+        specifications: {
+          power: toolForm.power,
+          fuelType: toolForm.fuel,
+          brand: toolForm.brand
+        }
       }, { headers: { Authorization: `Bearer ${token}` } });
-      setToolForm({ name: '', description: '', category: 'Tractor', daily: '', weekly: '', monthly: '', power: '', fuel: 'Diesel' });
+
+      toast.success('Tool listed successfully! It is now visible in the marketplace.', 'Tool Added ✅');
+      setToolForm({ name: '', description: '', category: 'Tractor', daily: '', weekly: '', monthly: '', power: '', fuel: 'Diesel', brand: '', village: user?.village || '', district: user?.district || '', state: user?.state || '' });
+      setToolImages([]);
       loadData();
-    } catch (err) { alert(err.response?.data?.message || 'Error adding tool.'); }
-    finally { setAddingTool(false); }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Error adding tool. Please try again.');
+    } finally {
+      setAddingTool(false);
+    }
   };
+
 
   // ── Add Product ────────────────────────────────────────────────────────────
   const handleAddProduct = async (e) => {
     e.preventDefault();
+    if (!prodForm.name || !prodForm.price) {
+      toast.error('Product name and price are required.'); return;
+    }
+    if (prodImages.length === 0) {
+      toast.error('Please upload at least one product image.', 'Image Required'); return;
+    }
     setAddingProd(true);
     try {
       await axios.post('/api/products', {
-        name: prodForm.name, description: prodForm.description,
-        type: prodForm.type, category: prodForm.category,
-        price: Number(prodForm.price), stock: Number(prodForm.stock),
-        images: ['https://images.unsplash.com/photo-1622383563227-04401ab4e5ea?auto=format&fit=crop&q=80&w=200']
+        name: prodForm.name.trim(),
+        description: prodForm.description.trim(),
+        type: prodForm.type,
+        category: prodForm.category,
+        price: Number(prodForm.price),
+        stock: Number(prodForm.stock),
+        images: prodImages
       }, { headers: { Authorization: `Bearer ${token}` } });
+      toast.success('Product listed successfully!', 'Product Added ✅');
       setProdForm({ name: '', description: '', type: 'Seed', category: '', price: '', stock: '' });
+      setProdImages([]);
       loadData();
-    } catch (err) { alert(err.response?.data?.message || 'Error adding product.'); }
-    finally { setAddingProd(false); }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Error adding product.');
+    } finally {
+      setAddingProd(false);
+    }
   };
+
 
   if (!token) return (
     <div className="text-center py-20">
@@ -285,6 +377,8 @@ const Dashboards = () => {
       <p className="text-slate-400 text-sm">Please log in to access your dashboard.</p>
     </div>
   );
+
+  if (!user) return null;
 
   const role = user?.role;
 
@@ -334,23 +428,23 @@ const Dashboards = () => {
           <p className="text-slate-400 text-xs mt-1">
             Welcome back, <span className="text-emerald-400 font-bold">{user?.name}</span> •
             <span className={`ml-1 text-[10px] font-bold px-2 py-0.5 rounded ${
-              user.kycStatus === 'Approved' ? 'text-emerald-400 bg-emerald-500/10' : 'text-amber-400 bg-amber-500/10'
+              user?.kycStatus === 'Approved' ? 'text-emerald-400 bg-emerald-500/10' : 'text-amber-400 bg-amber-500/10'
             }`}>
-              KYC: {user.kycStatus}
+              KYC: {user?.kycStatus}
             </span>
           </p>
         </div>
         <div className="flex items-center gap-3 text-xs">
           <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl">
             <span className="text-amber-400">🪙</span>
-            <span className="font-bold text-white">{user.coins}</span>
+            <span className="font-bold text-white">{user?.coins}</span>
           </div>
           <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl">
             <span className="text-emerald-400">⚡</span>
-            <span className="font-bold text-white">{user.xp} XP</span>
+            <span className="font-bold text-white">{user?.xp} XP</span>
           </div>
           <span className="text-[10px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2 py-1 rounded-lg font-bold">
-            {user.badge}
+            {user?.badge}
           </span>
         </div>
       </div>
@@ -373,8 +467,8 @@ const Dashboards = () => {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <RefreshCw size={28} className="text-emerald-500 animate-spin" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => <SkeletonStatCard key={i} />)}
         </div>
       ) : (
         <>
@@ -402,7 +496,7 @@ const Dashboards = () => {
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Aadhaar Number</label>
                       <input type="text" required placeholder="12-digit Aadhaar" maxLength={12}
-                        value={aadhaar} onChange={e => setAadhaar(e.target.value)}
+                        value={aadhaar} onChange={e => setAadhaar(e.target.value.replace(/\D/g, ''))}
                         className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 px-3 text-xs text-white focus:outline-none focus:border-emerald-500" />
                     </div>
                     <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800 text-center">
@@ -762,12 +856,36 @@ const Dashboards = () => {
                     {[['Daily', 'daily'], ['Weekly', 'weekly'], ['Monthly', 'monthly']].map(([label, key]) => (
                       <div key={key} className="space-y-1">
                         <label className="text-[9px] font-bold text-slate-400 uppercase">{label} ₹</label>
-                        <input type="number" required placeholder="0" value={toolForm[key]}
+                        <input type="number" required={key === 'daily'} placeholder="0" value={toolForm[key]}
                           onChange={e => setToolForm(p => ({ ...p, [key]: e.target.value }))}
                           className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-2 text-xs text-white focus:outline-none" />
                       </div>
                     ))}
                   </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">Village/City</label>
+                      <input type="text" placeholder="Your village" value={toolForm.village}
+                        onChange={e => setToolForm(p => ({ ...p, village: e.target.value }))}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-2 text-xs text-white focus:outline-none" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">District</label>
+                      <input type="text" placeholder="District name" value={toolForm.district}
+                        onChange={e => setToolForm(p => ({ ...p, district: e.target.value }))}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-2 text-xs text-white focus:outline-none" />
+                    </div>
+                  </div>
+
+                  <MultiImageUpload
+                    folder="machine"
+                    label="Tool Images"
+                    onUpload={urls => setToolImages(urls)}
+                    currentImages={toolImages}
+                    maxImages={5}
+                    required
+                  />
 
                   <button type="submit" disabled={addingTool}
                     className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-800 text-white font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all">
@@ -904,6 +1022,15 @@ const Dashboards = () => {
                         className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-xs text-white focus:outline-none" />
                     </div>
                   </div>
+
+                  <MultiImageUpload
+                    folder="product"
+                    label="Product Images"
+                    onUpload={urls => setProdImages(urls)}
+                    currentImages={prodImages}
+                    maxImages={4}
+                    required
+                  />
 
                   <button type="submit" disabled={addingProd}
                     className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-800 text-white font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all">

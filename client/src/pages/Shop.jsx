@@ -3,10 +3,13 @@ import { useSelector, useDispatch } from 'react-redux';
 import axios from 'axios';
 import { ShoppingCart, Tag, Filter, Check, ShoppingBag, ShieldAlert, Award } from 'lucide-react';
 import { updateGamification } from '../store/authSlice';
+import { useToast } from '../context/ToastContext';
+
 
 const Shop = () => {
   const { user, token } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
+  const toast = useToast();
 
   // Shop catalogs
   const [products, setProducts] = useState([]);
@@ -46,7 +49,7 @@ const Shop = () => {
     const existing = cart.find(item => item._id === product._id);
     if (existing) {
       if (existing.quantity >= product.stock) {
-        alert('Cannot add more. Insufficient stock.');
+        toast.warning(`Only ${product.stock} units available in stock.`, 'Stock Limit');
         return;
       }
       setCart(cart.map(item =>
@@ -55,7 +58,7 @@ const Shop = () => {
     } else {
       setCart([...cart, { ...product, quantity: 1 }]);
     }
-    alert(`${product.name} added to cart!`);
+    toast.success(`${product.name} added to cart!`, 'Added to Cart');
   };
 
   const removeFromCart = (id) => {
@@ -67,7 +70,7 @@ const Shop = () => {
       if (item._id === id) {
         const newQty = Math.max(1, item.quantity + amount);
         if (newQty > item.stock) {
-          alert('Cannot exceed available stock.');
+          toast.warning(`Only ${item.stock} units available.`);
           return item;
         }
         return { ...item, quantity: newQty };
@@ -76,43 +79,31 @@ const Shop = () => {
     }));
   };
 
+
   const handleCheckout = async (e) => {
     e.preventDefault();
     if (!shippingAddress.trim()) {
-      alert('Please provide a shipping address.');
+      toast.error('Please provide a shipping address.', 'Address Required');
       return;
     }
-
     setCheckoutLoading(true);
     try {
-      // 1. Create order
-      const orderItems = cart.map(item => ({
-        productId: item._id,
-        quantity: item.quantity
-      }));
-
+      const orderItems = cart.map(item => ({ productId: item._id, quantity: item.quantity }));
       const orderRes = await axios.post('/api/products/order', {
-        items: orderItems,
-        shippingAddress
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+        items: orderItems, shippingAddress
+      }, { headers: { Authorization: `Bearer ${token}` } });
 
       if (orderRes.data.success) {
         const { order, razorpayOrderId } = orderRes.data;
-
-        // 2. Mock Razorpay Verification Gate
         const verifyRes = await axios.post('/api/products/order/verify', {
-          orderId: order._id,
-          razorpayOrderId
-        }, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+          orderId: order._id, razorpayOrderId
+        }, { headers: { Authorization: `Bearer ${token}` } });
 
         if (verifyRes.data.success) {
-          alert(`Order placed successfully via sandbox! Received ${verifyRes.data.coinsEarned} Agri Coins and XP multipliers!`);
-          
-          // Update global gamification state
+          toast.success(
+            `Order placed! Earned ${verifyRes.data.coinsEarned} Agri Coins ☁ XP rewards applied.`,
+            'Order Confirmed ✅'
+          );
           if (user) {
             dispatch(updateGamification({
               xp: user.xp + (verifyRes.data.coinsEarned * 5),
@@ -120,19 +111,19 @@ const Shop = () => {
               badge: user.badge
             }));
           }
-
           setCart([]);
           setShippingAddress('');
           setIsCartOpen(false);
-          fetchProducts(); // refresh stock numbers
+          fetchProducts();
         }
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Error occurred during checkout.');
+      toast.error(err.response?.data?.message || 'Checkout failed. Please try again.');
     } finally {
       setCheckoutLoading(false);
     }
   };
+
 
   const cartTotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 

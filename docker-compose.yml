@@ -1,57 +1,103 @@
-version: '3.8'
+version: '3.9'
 
 services:
+  # ─── MongoDB ─────────────────────────────────────────────────────────────────
   mongodb:
-    image: mongo:latest
-    container_name: agrirent-mongodb
+    image: mongo:7.0
+    container_name: agrirent_mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASS:-changeme}
+      MONGO_INITDB_DATABASE: agrirent_hub
+    volumes:
+      - mongo_data:/data/db
+      - ./server/scripts/mongo-init.js:/docker-entrypoint-initdb.d/init.js:ro
     ports:
       - "27017:27017"
-    volumes:
-      - mongo-data:/data/db
     networks:
-      - agrirent-network
+      - agrirent_net
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/agrirent_hub --quiet
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
 
-  redis:
-    image: redis:alpine
-    container_name: agrirent-redis
-    ports:
-      - "6379:6379"
-    networks:
-      - agrirent-network
-
+  # ─── Backend API Server ───────────────────────────────────────────────────────
   server:
     build:
-      context: .
-      dockerfile: Dockerfile.server
-    container_name: agrirent-server
-    ports:
-      - "5000:5000"
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: agrirent_server
+    restart: unless-stopped
     environment:
-      - MONGO_URI=mongodb://mongodb:27017/agrirent
-      - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=agrirent_prod_secret_9988
-      - PORT=5000
+      NODE_ENV: production
+      PORT: 5001
+      MONGO_URI: mongodb://${MONGO_ROOT_USER:-admin}:${MONGO_ROOT_PASS:-changeme}@mongodb:27017/agrirent_hub?authSource=admin
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRE: ${JWT_EXPIRE:-15m}
+      REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET}
+      CLIENT_URL: ${CLIENT_URL:-http://localhost:5173}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
+      ML_SERVICE_URL: http://ml_service:5002
+      OPENWEATHER_API_KEY: ${OPENWEATHER_API_KEY:-}
+    ports:
+      - "5001:5001"
     depends_on:
-      - mongodb
-      - redis
+      mongodb:
+        condition: service_healthy
     networks:
-      - agrirent-network
+      - agrirent_net
+    healthcheck:
+      test: wget -qO- http://localhost:5001/api/health || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
+  # ─── Python ML Disease Detection Service ─────────────────────────────────────
+  ml_service:
+    build:
+      context: ./server/ml_service
+      dockerfile: Dockerfile
+    container_name: agrirent_ml
+    restart: unless-stopped
+    ports:
+      - "5002:5002"
+    networks:
+      - agrirent_net
+    healthcheck:
+      test: wget -qO- http://localhost:5002/health || exit 1
+      interval: 60s
+      timeout: 30s
+      retries: 2
+      start_period: 60s
+
+  # ─── Frontend (Nginx) ─────────────────────────────────────────────────────────
   client:
     build:
-      context: .
-      dockerfile: Dockerfile.client
-    container_name: agrirent-client
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: agrirent_client
+    restart: unless-stopped
     ports:
       - "80:80"
+      - "443:443"
     depends_on:
       - server
     networks:
-      - agrirent-network
+      - agrirent_net
 
 volumes:
-  mongo-data:
+  mongo_data:
+    driver: local
 
 networks:
-  agrirent-network:
+  agrirent_net:
     driver: bridge

@@ -3,9 +3,11 @@ import { useSelector } from 'react-redux';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import { Send, Image, Mic, Square, MessageSquare, Phone, User, CheckCheck, Loader2 } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 
 const Chat = () => {
   const { user, token } = useSelector((state) => state.auth);
+  const toast = useToast();
 
   // Chat contacts list
   const [contacts, setContacts] = useState([]);
@@ -160,7 +162,7 @@ const Chat = () => {
       setMediaRecorder(recorder);
       setIsRecording(true);
     } catch (err) {
-      alert('Microphone access denied or unavailable.');
+      toast.error('Microphone access denied. Please allow microphone permission in your browser settings.', 'Mic Error');
     }
   };
 

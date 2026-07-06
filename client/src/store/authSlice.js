@@ -1,7 +1,19 @@
 import { createSlice } from '@reduxjs/toolkit';
 
+const getUserFromStorage = () => {
+  try {
+    const item = localStorage.getItem('user');
+    if (item && item !== 'undefined') {
+      return JSON.parse(item);
+    }
+  } catch (error) {
+    console.error('Failed to parse user from localStorage:', error);
+  }
+  return null;
+};
+
 const initialState = {
-  user: JSON.parse(localStorage.getItem('user')) || null,
+  user: getUserFromStorage(),
   token: localStorage.getItem('token') || null,
   isAuthenticated: !!localStorage.getItem('token'),
   loading: false,
@@ -51,6 +63,13 @@ const authSlice = createSlice({
         state.user.badge = action.payload.badge;
         localStorage.setItem('user', JSON.stringify(state.user));
       }
+    },
+    // Merge partial user updates (avatar, name, phone, etc.)
+    updateUser: (state, action) => {
+      if (state.user) {
+        state.user = { ...state.user, ...action.payload };
+        localStorage.setItem('user', JSON.stringify(state.user));
+      }
     }
   }
 });
@@ -61,7 +80,8 @@ export const {
   authFailure,
   logout,
   updateKYC,
-  updateGamification
+  updateGamification,
+  updateUser
 } = authSlice.actions;
 
 export default authSlice.reducer;

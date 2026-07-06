@@ -78,6 +78,7 @@ const Quiz = () => {
   const [xpReward, setXpReward] = useState(0);
   const [coinsReward, setCoinsReward] = useState(0);
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [quizLoading, setQuizLoading] = useState(false);
   const [leaderboard, setLeaderboard] = useState([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('quiz'); // 'quiz' | 'leaderboard' | 'achievements'
@@ -85,14 +86,36 @@ const Quiz = () => {
   const [timeLeft, setTimeLeft] = useState(30);
   const [earnedAchievements, setEarnedAchievements] = useState([]);
 
-  // Filter questions by category + difficulty
-  const filterAndStartQuiz = () => {
-    let filtered = QUESTION_BANK;
-    if (selectedCategory !== 'All') filtered = filtered.filter(q => q.category === selectedCategory);
-    if (selectedDifficulty !== 'All') filtered = filtered.filter(q => q.difficulty === selectedDifficulty);
-    // Shuffle and pick 10
-    const shuffled = filtered.sort(() => Math.random() - 0.5).slice(0, Math.min(10, filtered.length));
-    setQuestions(shuffled);
+  // Fetch questions from API, fallback to local bank
+  const filterAndStartQuiz = async () => {
+    setQuizLoading(true);
+    try {
+      const params = new URLSearchParams({ count: 10 });
+      if (selectedCategory !== 'All') params.append('category', selectedCategory);
+      if (selectedDifficulty !== 'All') params.append('difficulty', selectedDifficulty);
+
+      const res = await axios.get(`/api/game/quiz?${params}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+
+      if (res.data.success && res.data.questions.length > 0) {
+        setQuestions(res.data.questions);
+      } else {
+        // Fallback to local bank
+        let filtered = QUESTION_BANK;
+        if (selectedCategory !== 'All') filtered = filtered.filter(q => q.category === selectedCategory);
+        if (selectedDifficulty !== 'All') filtered = filtered.filter(q => q.difficulty === selectedDifficulty);
+        setQuestions(filtered.sort(() => Math.random() - 0.5).slice(0, Math.min(10, filtered.length)));
+      }
+    } catch {
+      // Fallback to local bank on network error
+      let filtered = QUESTION_BANK;
+      if (selectedCategory !== 'All') filtered = filtered.filter(q => q.category === selectedCategory);
+      if (selectedDifficulty !== 'All') filtered = filtered.filter(q => q.difficulty === selectedDifficulty);
+      setQuestions(filtered.sort(() => Math.random() - 0.5).slice(0, Math.min(10, filtered.length)));
+    } finally {
+      setQuizLoading(false);
+    }
     setQuizIndex(0);
     setAnswers([]);
     setSelectedOption('');
@@ -302,9 +325,11 @@ const Quiz = () => {
                   </div>
                 )}
 
-                <button onClick={filterAndStartQuiz}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl text-sm transition-all shadow-lg flex items-center justify-center gap-2">
-                  <Zap size={16} /> Start Quiz Challenge
+                <button onClick={filterAndStartQuiz} disabled={quizLoading}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 text-white font-bold py-3.5 rounded-xl text-sm transition-all shadow-lg flex items-center justify-center gap-2">
+                  {quizLoading
+                    ? <><RefreshCw size={16} className="animate-spin" /> Loading Questions...</>
+                    : <><Zap size={16} /> Start Quiz Challenge</>}
                 </button>
               </div>
             )}

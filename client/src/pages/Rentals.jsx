@@ -2,10 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import axios from 'axios';
 import { MapPin, Shield, Calendar, Layers, Sliders, AlertTriangle, CreditCard } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
+import { SkeletonCard, PageLoader } from '../components/Skeleton';
+
 
 const Rentals = () => {
   const { user, token } = useSelector((state) => state.auth);
-  
+  const toast = useToast();
+
   // Market Listings
   const [tools, setTools] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -138,7 +142,7 @@ const Rentals = () => {
       setComparisonList(comparisonList.filter(item => item._id !== tool._id));
     } else {
       if (comparisonList.length >= 2) {
-        alert('You can compare a maximum of 2 tools at once.');
+        toast.warning('You can compare a maximum of 2 tools at once.');
         return;
       }
       setComparisonList([...comparisonList, tool]);
@@ -149,35 +153,28 @@ const Rentals = () => {
   const handleBookingSubmit = async (e) => {
     e.preventDefault();
     if (!startDate || !endDate) {
-      alert('Please fill out rental start and end dates.');
+      toast.error('Please select rental start and end dates.', 'Dates Required');
       return;
     }
-
     const start = new Date(startDate);
     const end = new Date(endDate);
-
     if (start >= end) {
-      alert('End date must be after the start date.');
+      toast.error('End date must be after the start date.');
       return;
     }
-
     // Double Booking Prevention check client-side
     const hasOverlap = toolBookings.some(booking => {
       const bStart = new Date(booking.startDate);
       const bEnd = new Date(booking.endDate);
       return start <= bEnd && end >= bStart;
     });
-
     if (hasOverlap) {
-      alert('Warning: Overlapping booking detected. The selected machine is already rented or pending approval during these dates.');
+      toast.warning('Dates conflict with an existing booking. Please choose different dates.', 'Booking Conflict');
       return;
     }
-
     setBookingLoading(true);
-
     const days = Math.round((end - start) / (1000 * 60 * 60 * 24));
     const totalAmount = days * selectedTool.rentRates.daily;
-
     try {
       const response = await axios.post('/api/bookings', {
         toolId: selectedTool._id,
@@ -185,23 +182,21 @@ const Rentals = () => {
         endDate: end,
         totalAmount,
         notes
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
+      }, { headers: { Authorization: `Bearer ${token}` } });
       if (response.data.success) {
-        alert(`✅ Booking requested! Total: ₹${totalAmount}\n\nThe owner will review your request. Once approved, go to Dashboard → Bookings to pay via Razorpay.`);
+        toast.success(`Booking requested for ₹${totalAmount.toLocaleString()}! Owner will review and approve it. Pay via Dashboard → Bookings.`, 'Booking Requested ✅');
         setStartDate('');
         setEndDate('');
         setNotes('');
         setToolBookings([...toolBookings, response.data.booking]);
       }
     } catch (error) {
-      alert(error.response?.data?.message || 'Double booking validation failed on server.');
+      toast.error(error.response?.data?.message || 'Booking failed. The dates may already be taken.');
     } finally {
       setBookingLoading(false);
     }
   };
+
 
   const getCalendarStatus = (dateString) => {
     const checkDate = new Date(dateString);

@@ -1,138 +1,161 @@
 const User = require('../models/User');
+const QUIZ_QUESTIONS = require('../data/quizQuestions');
 
-// Daily Farming Quiz Library
-const quizQuestions = [
-  {
-    id: 1,
-    question: 'Which nutrient is primarily responsible for leaf growth and green color in crops?',
-    options: ['Nitrogen', 'Phosphorus', 'Potassium', 'Calcium'],
-    answer: 'Nitrogen'
-  },
-  {
-    id: 2,
-    question: 'What is the ideal pH range for growing wheat crops?',
-    options: ['4.0 - 5.0', '6.0 - 7.0', '8.0 - 9.0', '5.0 - 5.5'],
-    answer: '6.0 - 7.0'
-  },
-  {
-    id: 3,
-    question: 'Which irrigation technique is best for water conservation in dry regions?',
-    options: ['Flood Irrigation', 'Furrow Irrigation', 'Drip Irrigation', 'Sprinkler Irrigation'],
-    answer: 'Drip Irrigation'
-  },
-  {
-    id: 4,
-    question: 'What type of crop is Soybean?',
-    options: ['Rabi', 'Kharif', 'Zaid', 'Cash crop'],
-    answer: 'Kharif'
-  },
-  {
-    id: 5,
-    question: 'Which crop disease is commonly known as the "Cancer of Wheat"?',
-    options: ['Powdery Mildew', 'Leaf Rust', 'Karnal Bunt', 'Loose Smut'],
-    answer: 'Karnal Bunt'
+// Fisher-Yates shuffle
+const shuffleArray = (arr) => {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
   }
-];
+  return a;
+};
 
-// @desc    Get daily quiz questions
-// @route   GET /api/game/quiz
-// @access  Private
+// @desc  Get quiz questions with filters
+// @route GET /api/game/quiz
+// @access Private
 const getDailyQuiz = async (req, res, next) => {
   try {
-    // Return questions excluding direct answers for frontend integrity
-    const secureQuestions = quizQuestions.map(q => ({
+    const { category, difficulty, count } = req.query;
+    const questionCount = Math.min(parseInt(count) || 10, 30);
+
+    let pool = [...QUIZ_QUESTIONS];
+
+    if (category && category !== 'All') {
+      pool = pool.filter(q => q.category === category);
+    }
+    if (difficulty && difficulty !== 'All') {
+      pool = pool.filter(q => q.difficulty === difficulty);
+    }
+
+    if (pool.length === 0) {
+      pool = [...QUIZ_QUESTIONS];
+    }
+
+    const selected = shuffleArray(pool).slice(0, questionCount);
+
+    // Strip answers before sending to client
+    const secure = selected.map(q => ({
       id: q.id,
       question: q.question,
-      options: q.options
+      options: shuffleArray(q.options),
+      category: q.category,
+      difficulty: q.difficulty
     }));
 
     res.json({
       success: true,
-      questions: secureQuestions
+      total: QUIZ_QUESTIONS.length,
+      count: secure.length,
+      questions: secure
     });
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Evaluate quiz answers, award XP & coins, update Badges
-// @route   POST /api/game/quiz/submit
-// @access  Private
+// @desc  Submit quiz answers and get XP/coins
+// @route POST /api/game/quiz/submit
+// @access Private
 const submitQuizResult = async (req, res, next) => {
-  const { answers } = req.body; // Array of { id, selectedOption }
+  const { answers } = req.body; // [{ id, selectedOption }]
 
   try {
-    if (!answers || !Array.isArray(answers)) {
+    if (!answers || !Array.isArray(answers) || answers.length === 0) {
       res.status(400);
-      return next(new Error('Answers array is required'));
+      return next(new Error('Answers array is required.'));
     }
 
     let score = 0;
-    answers.forEach(ans => {
-      const original = quizQuestions.find(q => q.id === ans.id);
-      if (original && original.answer === ans.selectedOption) {
-        score++;
-      }
+    const results = answers.map(ans => {
+      const original = QUIZ_QUESTIONS.find(q => q.id === ans.id);
+      if (!original) return { id: ans.id, correct: false, correctAnswer: null, explanation: null };
+      const correct = original.answer === ans.selectedOption;
+      if (correct) score++;
+      return {
+        id: ans.id,
+        correct,
+        correctAnswer: original.answer,
+        explanation: original.explanation,
+        category: original.category,
+        difficulty: original.difficulty
+      };
     });
 
-    // Reward math: 10 XP per correct answer, 5 Agri Coins per correct answer
     const xpReward = score * 10;
     const coinsReward = score * 5;
 
-    // Update user stats
     const user = await User.findById(req.user._id);
     user.xp += xpReward;
     user.coins += coinsReward;
 
-    // Check for badge upgrades
-    let newBadge = user.badge;
-    if (user.xp >= 1000) {
-      newBadge = 'Master Farmer';
-    } else if (user.xp >= 500) {
-      newBadge = 'Expert Farmer';
-    } else if (user.xp >= 100) {
-      newBadge = 'Skilled Farmer';
-    }
-    user.badge = newBadge;
+    // Badge upgrades
+    if (user.xp >= 1000) user.badge = 'Master Farmer';
+    else if (user.xp >= 500) user.badge = 'Expert Farmer';
+    else if (user.xp >= 100) user.badge = 'Skilled Farmer';
+
     await user.save();
 
     res.json({
       success: true,
       score,
-      totalQuestions: quizQuestions.length,
+      totalQuestions: answers.length,
+      percentage: Math.round((score / answers.length) * 100),
       xpReward,
       coinsReward,
       currentXP: user.xp,
       currentCoins: user.coins,
-      currentBadge: user.badge
+      currentBadge: user.badge,
+      results
     });
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Get user ranking leaderboard
-// @route   GET /api/game/leaderboard
-// @access  Public
+// @desc  Get leaderboard
+// @route GET /api/game/leaderboard
+// @access Public
 const getLeaderboard = async (req, res, next) => {
   try {
-    // Sort users by highest XP
-    const users = await User.find()
-      .select('name role xp coins badge avatar')
+    const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+    const users = await User.find({ isActive: true })
+      .select('name role xp coins badge avatar village')
       .sort({ xp: -1 })
-      .limit(10);
+      .limit(limit);
+
+    res.json({ success: true, leaderboard: users });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc  Get quiz question categories and stats
+// @route GET /api/game/quiz/stats
+// @access Public
+const getQuizStats = async (req, res, next) => {
+  try {
+    const categories = [...new Set(QUIZ_QUESTIONS.map(q => q.category))];
+    const difficulties = ['Easy', 'Medium', 'Hard'];
+
+    const stats = categories.map(cat => ({
+      category: cat,
+      total: QUIZ_QUESTIONS.filter(q => q.category === cat).length,
+      easy: QUIZ_QUESTIONS.filter(q => q.category === cat && q.difficulty === 'Easy').length,
+      medium: QUIZ_QUESTIONS.filter(q => q.category === cat && q.difficulty === 'Medium').length,
+      hard: QUIZ_QUESTIONS.filter(q => q.category === cat && q.difficulty === 'Hard').length
+    }));
 
     res.json({
       success: true,
-      leaderboard: users
+      totalQuestions: QUIZ_QUESTIONS.length,
+      categories,
+      difficulties,
+      stats
     });
   } catch (error) {
     next(error);
   }
 };
 
-module.exports = {
-  getDailyQuiz,
-  submitQuizResult,
-  getLeaderboard
-};
+module.exports = { getDailyQuiz, submitQuizResult, getLeaderboard, getQuizStats };

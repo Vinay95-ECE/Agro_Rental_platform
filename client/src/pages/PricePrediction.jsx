@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { AreaChart, TrendingUp, DollarSign, Calendar, MapPin, CalendarDays, LineChart } from 'lucide-react';
+import { AreaChart, TrendingUp, DollarSign, Calendar, MapPin, AlertTriangle, LineChart } from 'lucide-react';
 
 const PricePrediction = () => {
   const [crop, setCrop] = useState('Wheat');
@@ -10,16 +10,18 @@ const PricePrediction = () => {
   
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState(null);
+  const [error, setError] = useState('');
 
   const handlePredict = async (e) => {
     e.preventDefault();
     if (!district.trim()) {
-      alert('Please enter a district.');
+      setError('Please enter a district.');
       return;
     }
 
     setLoading(true);
     setReport(null);
+    setError('');
 
     try {
       const response = await axios.post('/api/ai/predict-price', {
@@ -37,7 +39,7 @@ const PricePrediction = () => {
         }, 1200);
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Error occurred calculating crop prices.');
+      setError(err.response?.data?.message || 'Could not connect to server. Please make sure the backend is running.');
       setLoading(false);
     }
   };
@@ -128,6 +130,13 @@ const PricePrediction = () => {
             >
               {loading ? 'Analyzing Mandi Metrics...' : 'Calculate Forecast'}
             </button>
+
+            {error && (
+              <div className="flex items-start gap-2 bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-xl">
+                <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                <p>{error}</p>
+              </div>
+            )}
           </form>
         </div>
 

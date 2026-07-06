@@ -7,6 +7,7 @@ import axios from 'axios';
 import { store } from './store';
 import { logout, authSuccess, updateGamification } from './store/authSlice';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
+import { ToastProvider } from './context/ToastContext';
 
 import Home from './pages/Home';
 import Rentals from './pages/Rentals';
@@ -47,6 +48,22 @@ const Navigation = () => {
     }
   }, [token]);
 
+  // Global 401 interceptor — auto-logout on expired/invalid token
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 401) {
+          dispatch(logout());
+          navigate('/login');
+        }
+        return Promise.reject(error);
+      }
+    );
+    return () => axios.interceptors.response.eject(interceptor);
+  }, [dispatch, navigate]);
+
+
   // Fetch Notifications from DB
   const fetchNotifications = async () => {
     if (!token) return;
@@ -68,10 +85,13 @@ const Navigation = () => {
   // Handle Real-Time socket notifications
   useEffect(() => {
     if (user && token) {
+      // Don't reconnect if socket is already connected
+      if (socketRef.current?.connected) return;
+
       socketRef.current = io(window.location.origin || 'http://localhost:5000');
 
       socketRef.current.on('connect', () => {
-        console.log('App socket connection established.');
+
       });
 
       socketRef.current.on(`notify_${user._id}`, (data) => {
@@ -80,16 +100,18 @@ const Navigation = () => {
         setUnreadCount(prev => prev + 1);
         
         // Dynamic flash/alert or console alert for premium user notice
-        console.log('Real-Time Alert Received:', data);
+
       });
 
       return () => {
         if (socketRef.current) {
           socketRef.current.disconnect();
+          socketRef.current = null;
         }
       };
     }
-  }, [user, token]);
+  }, [user?._id, token]);
+
 
   const handleLogout = async () => {
     try {
@@ -350,13 +372,16 @@ const MainApp = () => {
 const App = () => {
   return (
     <Provider store={store}>
-      <LanguageProvider>
-        <Router>
-          <MainApp />
-        </Router>
-      </LanguageProvider>
+      <ToastProvider>
+        <LanguageProvider>
+          <Router>
+            <MainApp />
+          </Router>
+        </LanguageProvider>
+      </ToastProvider>
     </Provider>
   );
 };
+
 
 export default App;

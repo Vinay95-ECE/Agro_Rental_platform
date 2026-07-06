@@ -3,27 +3,31 @@ import { useSelector, useDispatch } from 'react-redux';
 import axios from 'axios';
 import { PlusCircle, Search, MessageSquare, AlertCircle, Sparkles, CheckCircle } from 'lucide-react';
 import { updateGamification } from '../store/authSlice';
+import { useToast } from '../context/ToastContext';
+import { ImageUpload } from '../components/ImageUpload';
+import { SkeletonCard } from '../components/Skeleton';
+
 
 const Crops = () => {
   const { user, token } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
+  const toast = useToast();
 
-  // listings
   const [crops, setCrops] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
 
-  // form state (farmer)
   const [cropName, setCropName] = useState('');
   const [quantity, setQuantity] = useState('');
   const [unit, setUnit] = useState('kg');
   const [harvestDate, setHarvestDate] = useState('');
   const [price, setPrice] = useState('');
-  const [image, setImage] = useState('');
+  const [cropImage, setCropImage] = useState('');
   const [district, setDistrict] = useState('');
   const [formLoading, setFormLoading] = useState(false);
+
 
   const fetchCrops = async () => {
     setLoading(true);
@@ -49,71 +53,63 @@ const Crops = () => {
   const handlePostCrop = async (e) => {
     e.preventDefault();
     if (!cropName || !quantity || !price) {
-      alert('Please fill in crop name, quantity, and unit price.');
+      toast.error('Crop name, quantity, and unit price are required.', 'Missing Fields');
       return;
     }
-
+    if (!cropImage) {
+      toast.error('Please upload a crop image.', 'Image Required');
+      return;
+    }
     setFormLoading(true);
     try {
+      let lat = 28.6139, lng = 77.2090;
+      try {
+        const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 }));
+        lat = pos.coords.latitude; lng = pos.coords.longitude;
+      } catch { /* use Delhi defaults */ }
+
       const response = await axios.post('/api/crops', {
-        cropName,
-        quantity: Number(quantity),
-        unit,
+        cropName, quantity: Number(quantity), unit,
         harvestDate: harvestDate || new Date(),
         price: Number(price),
-        images: [image || 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&q=80&w=600'],
-        coordinates: [77.2090, 28.6139] // Delhi fallback coordinates
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+        images: [cropImage],
+        district,
+        coordinates: [lng, lat]
+      }, { headers: { Authorization: `Bearer ${token}` } });
 
       if (response.data.success) {
-        alert('Crop listed successfully! Earned +20 XP points for direct farm posting.');
-        
-        // Update user XP in Redux
-        if (user) {
-          dispatch(updateGamification({
-            xp: user.xp + 20,
-            coins: user.coins,
-            badge: user.badge
-          }));
-        }
-
-        setCropName('');
-        setQuantity('');
-        setUnit('kg');
-        setHarvestDate('');
-        setPrice('');
-        setImage('');
-        setDistrict('');
+        toast.success('Crop listed! ₹20 XP earned for direct farm posting.', 'Listing Published ✅');
+        if (user) dispatch(updateGamification({ xp: user.xp + 20, coins: user.coins, badge: user.badge }));
+        setCropName(''); setQuantity(''); setUnit('kg');
+        setHarvestDate(''); setPrice(''); setCropImage(''); setDistrict('');
         fetchCrops();
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Error occurred listing crop.');
+      toast.error(err.response?.data?.message || 'Error listing crop. Please try again.');
     } finally {
       setFormLoading(false);
     }
   };
 
+
   const handlePurchase = async (cropId) => {
     if (!token) {
-      alert('Please log in to purchase or inquire about crops.');
+      toast.warning('Please log in to purchase or inquire about crops.');
       return;
     }
-
     try {
       const res = await axios.post(`/api/crops/${cropId}/purchase`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
-
       if (res.data.success) {
-        alert('Inquiry submitted! The farmer has been notified, and you can chat with them directly to arrange shipping.');
-        fetchCrops(); // Refresh list to reflect sold status
+        toast.success('Inquiry sent! The farmer has been notified. You can chat with them to arrange shipping.', 'Inquiry Sent ✅');
+        fetchCrops();
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Error executing purchase inquiry.');
+      toast.error(err.response?.data?.message || 'Could not process purchase inquiry.');
     }
   };
+
 
   return (
     <div className="space-y-8">
@@ -195,16 +191,14 @@ const Crops = () => {
               </div>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider pl-0.5">Crop Image Link (Optional)</label>
-              <input
-                type="url"
-                value={image}
-                onChange={(e) => setImage(e.target.value)}
-                placeholder="https://example.com/crop.jpg"
-                className="w-full bg-slate-950 border border-slate-850 rounded-xl py-2.5 px-3 text-xs focus:outline-none focus:border-emerald-500 text-white"
-              />
-            </div>
+            <ImageUpload
+              folder="crop"
+              label="Crop Image"
+              onUpload={url => setCropImage(url)}
+              currentImage={cropImage}
+              aspectRatio="landscape"
+              required
+            />
 
             {token && user?.role === 'Farmer' ? (
               <button

@@ -2,17 +2,21 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { Mic, ArrowRight, Star, Shield, Cpu, RefreshCw, HelpCircle, BookOpen } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
+
 
 const Home = () => {
   const { t, language } = useLanguage();
   const navigate = useNavigate();
+  const toast = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [isRecording, setIsRecording] = useState(false);
+
 
   const startVoiceSearch = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert('Speech Recognition not supported in this browser. Please use Google Chrome.');
+      toast.warning('Voice search requires Google Chrome or Edge browser.', 'Browser Not Supported');
       return;
     }
 
