@@ -61,6 +61,10 @@ const toolSchema = new mongoose.Schema({
     bookingId: { type: mongoose.Schema.Types.ObjectId, ref: 'Booking' },
     _id: false
   }],
+  // Admin control fields
+  isApproved: { type: Boolean, default: true },
+  isHidden: { type: Boolean, default: false },
+  isFeatured: { type: Boolean, default: false },
   viewCount: { type: Number, default: 0 }
 }, { timestamps: true });
 

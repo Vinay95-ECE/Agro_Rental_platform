@@ -135,6 +135,14 @@ app.use('/api', apiLimiter);
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 
+// Strict rate limit for admin login (5 attempts per 15 min)
+const adminAuthLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { success: false, message: 'Too many admin login attempts. Please wait 15 minutes.' }
+});
+app.use('/api/admin/auth/login', adminAuthLimiter);
+
 // ─── Routes ────────────────────────────────────────────────────────────────────
 app.use('/api/auth',          require('./routes/authRoutes'));
 app.use('/api/tools',         require('./routes/toolRoutes'));

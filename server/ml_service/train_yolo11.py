@@ -247,6 +247,7 @@ def train_yolo11(dataset_root: str):
 
 
 def main():
+    global EPOCHS, BATCH_SIZE, DEVICE
     parser = argparse.ArgumentParser(description="Train YOLO11 on PlantVillage dataset")
     parser.add_argument("--epochs", type=int, default=EPOCHS, help="Number of training epochs")
     parser.add_argument("--batch", type=int, default=BATCH_SIZE, help="Batch size")
@@ -262,8 +263,6 @@ def main():
     if not check_dependencies():
         sys.exit(1)
 
-    # Update globals from args
-    global EPOCHS, BATCH_SIZE, DEVICE
     EPOCHS = args.epochs
     BATCH_SIZE = args.batch
     DEVICE = args.device

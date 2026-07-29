@@ -39,7 +39,7 @@ const sendTokenResponse = async (user, statusCode, res) => {
 // ─── @desc  Register new user ─────────────────────────────────────────────────
 // @route POST /api/auth/register  @access Public
 const registerUser = async (req, res, next) => {
-  const { name, email, password, phone, role, village, district, state } = req.body;
+  const { name, email, password, phone, role, village, district, state, avatar } = req.body;
 
   try {
     if (!name || !email || !password || !phone) {
@@ -70,7 +70,8 @@ const registerUser = async (req, res, next) => {
       role: userRole,
       village: village || '',
       district: district || '',
-      state: state || ''
+      state: state || '',
+      avatar: avatar || ''
     });
 
     // Re-fetch with password excluded via select

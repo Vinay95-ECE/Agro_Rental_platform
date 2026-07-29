@@ -29,24 +29,24 @@ const productSchema = new mongoose.Schema({
     required: [true, 'Stock quantity is required'],
     min: [0, 'Stock cannot be negative']
   },
-  images: [{
-    type: String
-  }],
+  images: [{ type: String }],
   shopkeeper: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
-  ratings: {
-    type: Number,
-    default: 0
-  },
-  reviewsCount: {
-    type: Number,
-    default: 0
-  }
+  ratings: { type: Number, default: 0 },
+  reviewsCount: { type: Number, default: 0 },
+  // Admin control fields
+  isApproved: { type: Boolean, default: true },
+  isHidden: { type: Boolean, default: false },
+  isFeatured: { type: Boolean, default: false }
 }, {
   timestamps: true
 });
+
+productSchema.index({ shopkeeper: 1 });
+productSchema.index({ category: 1 });
+productSchema.index({ name: 'text', description: 'text' });
 
 module.exports = mongoose.model('Product', productSchema);

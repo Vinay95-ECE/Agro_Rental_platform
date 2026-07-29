@@ -8,12 +8,12 @@ Endpoints:
   GET  /health          → service status
 
 Key improvements over v2:
-  • Real YOLO11n-cls confidence scores (no hardcoded values)
+  • Real YOLOv8 confidence scores (no hardcoded values)
   • Strict invalid-image detection (selfies → low confidence + rejection)
   • Video frame-by-frame analysis with per-frame results
   • Webcam base64 frame endpoint
   • Gemini Vision fallback with real confidence extraction
-  • Training-ready: saves to ml_service/models/plant_disease_yolo11.pt
+  • Trained model: ml_service/models/plant_disease_yolo11.pt (YOLOv8)
 """
 
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
@@ -27,6 +27,7 @@ import os
 import sys
 import json
 import time
+import glob
 import traceback
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -88,8 +89,18 @@ app.add_middleware(
 )
 
 # -- Globals --------------------------------------------------------------------
-disease_model = None       # YOLO11n-cls trained on PlantVillage
+disease_models = {}        # {"potato": YOLO(...), "wheat": YOLO(...), ...}
 MODELS_DIR = os.path.join(os.path.dirname(__file__), "models")
+
+# -- Crop name aliases (maps alternative names to model filenames) ---------------
+CROP_ALIASES = {
+    "rice": "paddy",
+    "corn": "maize",
+    "maize": "corn",
+    "bell_pepper": "pepper",
+    "pepper,_bell": "pepper",
+    "corn_(maize)": "corn",
+}
 
 # -- PlantVillage 38-class labels -----------------------------------------------
 PLANT_VILLAGE_CLASSES = [
@@ -573,24 +584,35 @@ def draw_detection_overlay(image: Image.Image, detections: list, label: str, sev
 # -- Model loading --------------------------------------------------------------
 
 def load_models():
-    global disease_model
+    global disease_models
     if not YOLO_AVAILABLE:
         print("[WARN]  YOLO not available -- using Gemini Vision fallback only")
         return
 
     os.makedirs(MODELS_DIR, exist_ok=True)
-    model_path = os.path.join(MODELS_DIR, "plant_disease_yolo11.pt")
 
-    if os.path.exists(model_path):
-        try:
-            disease_model = YOLO(model_path)
-            print(f"[OK] Loaded trained disease model: {model_path}")
-        except Exception as e:
-            print(f"[ERROR] Failed to load model: {e}")
-    else:
-        print("[WARN]  No trained model found at ml_service/models/plant_disease_yolo11.pt")
-        print("   Run: python train_yolo11.py   to train the model")
+    # Auto-discover all .pt model files in the models directory
+    pt_files = glob.glob(os.path.join(MODELS_DIR, "*.pt"))
+
+    if not pt_files:
+        print("[WARN]  No .pt model files found in ml_service/models/")
+        print("   Drop your trained YOLOv8 models as {crop_name}.pt")
+        print("   Example: potato.pt, wheat.pt, paddy.pt, tomato.pt")
         print("   Falling back to Gemini Vision API for analysis")
+        return
+
+    for pt_file in pt_files:
+        crop_key = os.path.splitext(os.path.basename(pt_file))[0].lower()
+        try:
+            disease_models[crop_key] = YOLO(pt_file)
+            print(f"[OK] Loaded YOLOv8 model for '{crop_key}': {pt_file}")
+        except Exception as e:
+            print(f"[ERROR] Failed to load model '{crop_key}' ({pt_file}): {e}")
+
+    if disease_models:
+        print(f"[OK] {len(disease_models)} crop model(s) loaded: {', '.join(sorted(disease_models.keys()))}")
+    else:
+        print("[WARN]  No models loaded successfully. Falling back to Gemini Vision.")
 
 
 # -- Gemini Vision fallback (google.genai SDK) ---------------------------------
@@ -629,8 +651,7 @@ def analyze_with_gemini(b64_image: str, mime_type: str, crop_name: str):
 
     # Try models in order (most quota-friendly first)
     models_to_try = [
-        "gemini-1.5-flash",
-        "gemini-1.5-flash-8b",
+        "gemini-flash-latest",
         "gemini-2.0-flash-lite",
         "gemini-2.0-flash",
     ]
@@ -710,16 +731,25 @@ def run_detection(pil_image: Image.Image, crop_name: str) -> dict:
             }
         }
 
-    # -- Step 2: YOLO11 classification -----------------------------------------
+    # -- Step 2: YOLOv8 classification (per-crop model) -------------------------
     detections = []
     predicted_class = None
     yolo_confidence = 0.0
     yolo_used = False
 
-    if disease_model is not None:
+    # Select the right model for this crop
+    crop_key = crop_name.strip().lower()
+    selected_model = disease_models.get(crop_key)
+    if selected_model is None:
+        # Try alias mapping (e.g., "rice" → "paddy")
+        alias_key = CROP_ALIASES.get(crop_key)
+        if alias_key:
+            selected_model = disease_models.get(alias_key)
+
+    if selected_model is not None:
         yolo_used = True
         try:
-            results = disease_model.predict(source=pil_image, conf=0.10, verbose=False)
+            results = selected_model.predict(source=pil_image, conf=0.10, verbose=False)
             if results and len(results) > 0:
                 result = results[0]
 
@@ -815,7 +845,7 @@ def run_detection(pil_image: Image.Image, crop_name: str) -> dict:
     if yolo_used and predicted_class and predicted_class in DISEASE_TREATMENTS:
         treatment_info = DISEASE_TREATMENTS[predicted_class]
         final_confidence = yolo_confidence
-        analysis_method = "yolo11-classification"
+        analysis_method = "yolov8-classification"
 
     elif gemini_result and gemini_result.get("is_plant", True):
         # Use Gemini's full result
@@ -871,7 +901,7 @@ def run_detection(pil_image: Image.Image, crop_name: str) -> dict:
             "diseaseName": "[WARN] Analysis Incomplete -- Setup Required",
             "severity": "Unknown",
             "confidence": f"{round(plant_conf * 40, 1)}%",
-            "explanation": f"A plant/leaf was detected (plant score: {plant_conf*100:.0f}%) but no AI model is configured. Please either: (1) Train the YOLO model with `python train_yolo11.py`, or (2) Add a GEMINI_API_KEY to your .env file for cloud-based analysis.",
+            "explanation": f"A plant/leaf was detected (plant score: {plant_conf*100:.0f}%) but no YOLOv8 model is loaded for '{crop_name}'. Please either: (1) Drop a trained {crop_name.lower()}.pt model into ml_service/models/, or (2) Add a GEMINI_API_KEY to your .env file for cloud-based analysis.",
             "treatment": "Setup required: train YOLO model or configure Gemini API key.",
             "fertilizer": "Cannot recommend without accurate diagnosis.",
             "pesticide": "Cannot recommend without accurate diagnosis.",
@@ -905,21 +935,24 @@ def _resize_image(img: Image.Image, max_size: int = 640) -> Image.Image:
 def health_check():
     _gemini_key = os.getenv("GEMINI_API_KEY", "")
     _gemini_ok = bool(_gemini_key) and _gemini_key not in ("your_gemini_api_key", "your_key", "")
+    loaded_crops = sorted(disease_models.keys()) if disease_models else []
     return {
         "status": "ok",
-        "service": "AgriRent Disease Detector v3.0",
-        "yolo_loaded": disease_model is not None,
+        "service": "AgriRent Disease Detector v3.0 (Multi-Crop)",
+        "yolo_loaded": len(disease_models) > 0,
+        "loaded_models": loaded_crops,
+        "model_count": len(disease_models),
         "cv2_available": CV2_AVAILABLE,
         "gemini_configured": _gemini_ok,
         "mode": (
-            "yolo11-trained" if disease_model else
+            f"yolov8-multi-crop ({len(disease_models)} models)" if disease_models else
             "gemini-vision" if _gemini_ok else
             "heuristic-only"
         ),
-        "model_path": os.path.join(MODELS_DIR, "plant_disease_yolo11.pt"),
+        "models_dir": MODELS_DIR,
         "tip": (
-            "Add a real GEMINI_API_KEY to server/.env for AI-powered analysis" if not _gemini_ok and disease_model is None
-            else "Run: python train_yolo11.py to train YOLO11 model for offline inference"
+            "Add a real GEMINI_API_KEY to server/.env for AI-powered analysis" if not _gemini_ok and not disease_models
+            else f"Drop .pt files in models/ folder. Currently loaded: {', '.join(loaded_crops) or 'none'}"
         ),
     }
 

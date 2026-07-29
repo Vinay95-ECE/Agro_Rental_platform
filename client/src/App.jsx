@@ -23,6 +23,11 @@ import Chat from './pages/Chat';
 import Dashboards from './pages/Dashboards';
 import WeatherPage from './pages/WeatherPage';
 
+// ─── Admin Imports ──────────────────────────────────────────────────────────────
+import AdminLogin from './pages/admin/AdminLogin';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminRoute from './components/AdminRoute';
+
 import { Bell, LogOut, Award, Shield, User as UserIcon, MessageCircle } from 'lucide-react';
 
 const Navigation = () => {
@@ -88,7 +93,7 @@ const Navigation = () => {
       // Don't reconnect if socket is already connected
       if (socketRef.current?.connected) return;
 
-      socketRef.current = io(window.location.origin || 'http://localhost:5000');
+      socketRef.current = io(import.meta.env.VITE_API_URL || window.location.origin || 'http://localhost:5001');
 
       socketRef.current.on('connect', () => {
 
@@ -341,6 +346,28 @@ const Footer = () => {
 };
 
 const MainApp = () => {
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith('/admin');
+
+  // Admin routes get their own standalone layout (no nav/footer)
+  if (isAdminRoute) {
+    return (
+      <Routes>
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin/dashboard" element={
+          <AdminRoute>
+            <AdminDashboard />
+          </AdminRoute>
+        } />
+        <Route path="/admin" element={
+          <AdminRoute>
+            <AdminDashboard />
+          </AdminRoute>
+        } />
+      </Routes>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col justify-between bg-slate-950 font-sans selection:bg-emerald-500/30 selection:text-emerald-300 text-slate-100">
       <Navigation />

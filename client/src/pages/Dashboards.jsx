@@ -499,6 +499,27 @@ const Dashboards = () => {
                         value={aadhaar} onChange={e => setAadhaar(e.target.value.replace(/\D/g, ''))}
                         className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 px-3 text-xs text-white focus:outline-none focus:border-emerald-500" />
                     </div>
+
+                    <div className="space-y-3 pt-2">
+                      <div className="space-y-1.5">
+                        <ImageUpload 
+                          folder="kyc"
+                          label="Aadhaar Card Photo"
+                          required
+                          currentImage={kycAadhaarImage} 
+                          onUpload={(url) => setKycAadhaarImage(url)} 
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <ImageUpload 
+                          folder="kyc"
+                          label="Selfie Photo (Optional)"
+                          currentImage={kycSelfieImage} 
+                          onUpload={(url) => setKycSelfieImage(url)} 
+                        />
+                      </div>
+                    </div>
+
                     <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800 text-center">
                       <p className="text-[10px] text-slate-500 font-bold">Current Status</p>
                       <p className={`text-sm font-extrabold mt-0.5 ${user.kycStatus === 'Pending' ? 'text-amber-400 animate-pulse' : 'text-red-400'}`}>
@@ -1123,54 +1144,126 @@ const Dashboards = () => {
 
           {/* ── ADMIN KYC ─────────────────────────────────────────────────────── */}
           {activeTab === 'kyc' && role === 'Admin' && (
-            <div className="glass border border-slate-800 rounded-2xl p-6">
-              <SectionHeader icon={FileText} title="KYC Verification Requests" subtitle="Review and approve identity documents" />
-              {kycRecords.length === 0 ? (
-                <div className="text-center py-12">
-                  <CheckCircle size={32} className="text-emerald-700 mx-auto mb-3" />
-                  <p className="text-slate-500 text-sm">No pending KYC requests.</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left">
-                    <thead>
-                      <tr className="border-b border-slate-800 text-slate-500 uppercase tracking-wider">
-                        <th className="py-3 px-3">User</th>
-                        <th className="py-3 px-3">Type</th>
-                        <th className="py-3 px-3">Aadhaar</th>
-                        <th className="py-3 px-3">Date</th>
-                        <th className="py-3 px-3">Status</th>
-                        <th className="py-3 px-3 text-right">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-900">
-                      {kycRecords.map(rec => (
-                        <tr key={rec._id} className="hover:bg-slate-900/30">
-                          <td className="py-3 px-3 font-bold text-white">{rec.user?.name}</td>
-                          <td className="py-3 px-3 text-emerald-400 font-semibold">{rec.verificationType}</td>
-                          <td className="py-3 px-3 font-mono text-slate-300">{rec.aadhaarNumber}</td>
-                          <td className="py-3 px-3 text-slate-500">{new Date(rec.createdAt).toLocaleDateString()}</td>
-                          <td className="py-3 px-3"><StatusBadge status={rec.status} /></td>
-                          <td className="py-3 px-3 text-right">
-                            {rec.status === 'Pending' && (
-                              <div className="flex gap-2 justify-end">
-                                <button onClick={() => handleReviewKYC(rec._id, 'Approved')}
-                                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all">
-                                  Approve
-                                </button>
-                                <button onClick={() => handleReviewKYC(rec._id, 'Rejected')}
-                                  className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all">
-                                  Reject
-                                </button>
+            <div className="space-y-5">
+              <div className="glass border border-slate-800 rounded-2xl p-6">
+                <SectionHeader icon={FileText} title="KYC Verification Requests" subtitle="Review and approve identity documents" />
+                {kycRecords.length === 0 ? (
+                  <div className="text-center py-12">
+                    <CheckCircle size={32} className="text-emerald-700 mx-auto mb-3" />
+                    <p className="text-slate-500 text-sm">No pending KYC requests.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {kycRecords.map(rec => (
+                      <div key={rec._id}
+                        className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 hover:border-slate-700 transition-all"
+                      >
+                        <div className="flex flex-col lg:flex-row gap-4">
+                          {/* User info */}
+                          <div className="flex-shrink-0 space-y-2 lg:w-56">
+                            <div className="flex items-center gap-2">
+                              {rec.user?.avatar ? (
+                                <img src={rec.user.avatar} alt={rec.user?.name} className="w-8 h-8 rounded-full object-cover border border-slate-700" />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-white">
+                                  {rec.user?.name?.charAt(0)}
+                                </div>
+                              )}
+                              <div>
+                                <p className="text-sm font-bold text-white">{rec.user?.name}</p>
+                                <p className="text-[10px] text-slate-400">{rec.user?.email}</p>
+                              </div>
+                            </div>
+                            <div className="space-y-1 text-[10px]">
+                              <p className="text-slate-500">Phone: <span className="text-slate-300">{rec.user?.phone}</span></p>
+                              <p className="text-slate-500">Type: <span className="text-emerald-400 font-bold">{rec.verificationType}</span></p>
+                              <p className="text-slate-500">Aadhaar: <span className="font-mono text-slate-200">{rec.aadhaarNumber}</span></p>
+                              <p className="text-slate-500">Submitted: <span className="text-slate-300">{new Date(rec.createdAt).toLocaleDateString('en-IN')}</span></p>
+                            </div>
+                            <StatusBadge status={rec.status} />
+                          </div>
+
+                          {/* Document images */}
+                          <div className="flex-1">
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Uploaded Documents</p>
+                            <div className="flex flex-wrap gap-3">
+                              {rec.aadhaarImage ? (
+                                <div className="text-center">
+                                  <a href={rec.aadhaarImage} target="_blank" rel="noopener noreferrer" title="View Aadhaar">
+                                    <img src={rec.aadhaarImage} alt="Aadhaar" className="w-20 h-14 object-cover rounded-lg border border-slate-700 hover:border-emerald-500 transition-all cursor-pointer" />
+                                  </a>
+                                  <p className="text-[9px] text-slate-500 mt-1">Aadhaar</p>
+                                </div>
+                              ) : (
+                                <div className="text-center">
+                                  <div className="w-20 h-14 bg-slate-800 rounded-lg flex items-center justify-center border border-slate-700">
+                                    <p className="text-[9px] text-slate-600">No Aadhaar</p>
+                                  </div>
+                                  <p className="text-[9px] text-red-400 mt-1">Missing!</p>
+                                </div>
+                              )}
+                              {rec.selfieImage && (
+                                <div className="text-center">
+                                  <a href={rec.selfieImage} target="_blank" rel="noopener noreferrer" title="View Selfie">
+                                    <img src={rec.selfieImage} alt="Selfie" className="w-20 h-14 object-cover rounded-lg border border-slate-700 hover:border-emerald-500 transition-all cursor-pointer" />
+                                  </a>
+                                  <p className="text-[9px] text-slate-500 mt-1">Selfie</p>
+                                </div>
+                              )}
+                              {rec.machineDocImage && (
+                                <div className="text-center">
+                                  <a href={rec.machineDocImage} target="_blank" rel="noopener noreferrer">
+                                    <img src={rec.machineDocImage} alt="Machine Doc" className="w-20 h-14 object-cover rounded-lg border border-slate-700 hover:border-emerald-500 transition-all cursor-pointer" />
+                                  </a>
+                                  <p className="text-[9px] text-slate-500 mt-1">Machine</p>
+                                </div>
+                              )}
+                              {rec.shopLicenseImage && (
+                                <div className="text-center">
+                                  <a href={rec.shopLicenseImage} target="_blank" rel="noopener noreferrer">
+                                    <img src={rec.shopLicenseImage} alt="Shop License" className="w-20 h-14 object-cover rounded-lg border border-slate-700 hover:border-emerald-500 transition-all cursor-pointer" />
+                                  </a>
+                                  <p className="text-[9px] text-slate-500 mt-1">Shop License</p>
+                                </div>
+                              )}
+                            </div>
+
+                            {rec.rejectionReason && (
+                              <div className="mt-3 p-2 bg-red-500/10 border border-red-500/20 rounded-lg">
+                                <p className="text-[10px] text-red-400"><strong>Rejection Reason:</strong> {rec.rejectionReason}</p>
                               </div>
                             )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex-shrink-0 flex flex-col gap-2 lg:w-36">
+                            {rec.status === 'Pending' ? (
+                              <>
+                                <button
+                                  onClick={() => handleReviewKYC(rec._id, 'Approved')}
+                                  className="flex items-center justify-center gap-1.5 py-2 text-xs font-bold bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-xl hover:bg-emerald-600/40 transition-all"
+                                >
+                                  <Check size={12} /> Approve
+                                </button>
+                                <button
+                                  onClick={() => handleReviewKYC(rec._id, 'Rejected')}
+                                  className="flex items-center justify-center gap-1.5 py-2 text-xs font-bold bg-red-600/20 text-red-400 border border-red-500/30 rounded-xl hover:bg-red-600/40 transition-all"
+                                >
+                                  <X size={12} /> Reject
+                                </button>
+                              </>
+                            ) : (
+                              <p className="text-[10px] text-slate-600 italic">
+                                Reviewed {rec.reviewedAt ? new Date(rec.reviewedAt).toLocaleDateString('en-IN') : '—'}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

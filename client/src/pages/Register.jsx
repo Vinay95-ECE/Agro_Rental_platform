@@ -3,7 +3,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { authStart, authSuccess, authFailure } from '../store/authSlice';
-import { UserPlus, User, Mail, Lock, Phone, ShieldAlert, Users } from 'lucide-react';
+import { UserPlus, User, Mail, Lock, Phone, ShieldAlert, Users, Camera } from 'lucide-react';
+import { ImageUpload } from '../components/ImageUpload';
 
 const Register = () => {
   const [name, setName] = useState('');
@@ -11,6 +12,7 @@ const Register = () => {
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState('Farmer');
+  const [avatar, setAvatar] = useState('');
   
   const { loading, error } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
@@ -25,7 +27,8 @@ const Register = () => {
         email,
         password,
         phone,
-        role
+        role,
+        avatar
       });
       if (response.data.success) {
         dispatch(authSuccess({
@@ -60,6 +63,19 @@ const Register = () => {
         )}
 
         <form onSubmit={handleRegister} className="space-y-4">
+
+          {/* Profile Picture Upload */}
+          <div className="flex flex-col items-center gap-2 pb-4">
+            <ImageUpload
+              folder="registerAvatar"
+              label="Profile Photo (optional)"
+              currentImage={avatar}
+              onUpload={(url) => setAvatar(url)}
+              aspectRatio="square"
+              className="w-24 [&>div]:rounded-full"
+            />
+          </div>
+
           <div className="space-y-1">
             <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider pl-0.5">Full Name</label>
             <div className="relative flex items-center">
@@ -161,3 +177,4 @@ const Register = () => {
 };
 
 export default Register;
+

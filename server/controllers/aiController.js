@@ -145,13 +145,16 @@ const analyzeImageWithGemini = async (base64Image, mimeType, cropName) => {
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
     
-    const prompt = `You are an expert agricultural plant pathologist and agronomist. Analyze this ${cropName || 'crop'} leaf/plant image and provide a detailed disease diagnosis.
+    const prompt = `You are an expert agricultural plant pathologist and agronomist. Analyze this image.
+First, determine if the image contains a plant, leaf, or crop. If it does NOT (e.g., it's a person, selfie, animal, random object, etc.), you MUST set "is_plant": false and "confidence": "0%".
+If it IS a plant, leaf, or crop, set "is_plant": true, and provide a detailed disease diagnosis for the ${cropName || 'crop'}.
 
 Respond ONLY with a valid JSON object (no markdown, no code blocks) in exactly this format:
 {
-  "diseaseName": "Full scientific and common disease name",
-  "confidence": "Percentage like 94.8%",
-  "severity": "One of: Healthy, Low, Moderate, High, Severe",
+  "is_plant": true or false,
+  "diseaseName": "Full scientific and common disease name (or 'Not a plant' if is_plant is false)",
+  "confidence": "Percentage like 94.8% (or '0%' if not a plant)",
+  "severity": "One of: Healthy, Low, Moderate, High, Severe (or 'Unknown' if not a plant)",
   "explanation": "2-3 sentence scientific explanation of the disease and its impact",
   "treatment": "Specific chemical/organic treatment with dosage and frequency",
   "fertilizer": "Specific fertilizer recommendation with dosage to boost immunity",
@@ -177,7 +180,17 @@ Analyze visible symptoms carefully: color, spots, lesions, wilting, discoloratio
     return JSON.parse(cleaned);
   } catch (err) {
     console.error('Gemini Vision analysis failed:', err.message);
-    return null;
+    
+    let friendlyMessage = "Failed to analyze image.";
+    if (err.message.includes('429')) {
+      friendlyMessage = "Quota exceeded (Too Many Requests). Please check your API limits or try again later.";
+    } else if (err.message.includes('403') || err.message.includes('API_KEY_INVALID')) {
+      friendlyMessage = "Invalid API Key provided.";
+    } else if (err.message.includes('400')) {
+      friendlyMessage = "Bad Request. The image or prompt may be invalid.";
+    }
+    
+    throw new Error(`Gemini API Error: ${friendlyMessage}`);
   }
 };
 
@@ -339,15 +352,22 @@ const analyzeDiseaseImage = async (req, res, next) => {
       analysisMethod = diagnosis.analysisMethod || analysisMethod;
     } else {
       // ML service down — try Gemini directly
-      const geminiDiagnosis = await analyzeImageWithGemini(base64Image, mimeType, cropName);
+      let geminiDiagnosis = null;
+      try {
+        geminiDiagnosis = await analyzeImageWithGemini(base64Image, mimeType, cropName);
+      } catch (geminiErr) {
+        res.status(503);
+        return next(new Error(`AI Analysis Failed: ${geminiErr.message}. Cannot verify image.`));
+      }
+
       if (geminiDiagnosis) {
         diagnosis = geminiDiagnosis;
         analysisMethod = 'gemini-vision';
-        // Check if Gemini flagged as non-plant (confidence < 20%)
+        // Check if Gemini flagged as non-plant
         const conf = parseFloat(String(geminiDiagnosis.confidence || '50').replace('%', ''));
-        isPlant = conf >= 20;
+        isPlant = geminiDiagnosis.is_plant !== undefined ? geminiDiagnosis.is_plant : (conf >= 20);
       } else {
-        // Final fallback: rule-based knowledge base with image-specific seed for uniqueness
+        // Final fallback: rule-based knowledge base with image-specific seed for uniqueness (Only when no API keys are configured)
         const imageSeed = imageBuffer.reduce((acc, byte, i) => i < 8 ? acc + byte : acc, 0);
         diagnosis = getKnowledgeBaseDiagnosis(cropName, imageSeed);
         // Recalculate confidence to be unique per image

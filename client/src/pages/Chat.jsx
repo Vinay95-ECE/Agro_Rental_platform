@@ -51,7 +51,7 @@ const Chat = () => {
 
   // Connect Socket.io client
   useEffect(() => {
-    socketRef.current = io(window.location.origin || 'http://localhost:5000');
+    socketRef.current = io(import.meta.env.VITE_API_URL || window.location.origin || 'http://localhost:5001');
 
     socketRef.current.on('connect', () => {
       console.log('Chat socket connected.');

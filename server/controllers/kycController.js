@@ -35,6 +35,20 @@ const submitKYC = async (req, res, next) => {
       return next(new Error('Your KYC is already approved.'));
     }
 
+    // ── Duplicate Aadhaar check ────────────────────────────────────────────
+    // Block if another user already has submitted a KYC with this Aadhaar
+    const duplicate = await KYCRecord.findOne({
+      aadhaarNumber,
+      user: { $ne: req.user._id }
+    }).populate('user', 'name');
+
+    if (duplicate) {
+      res.status(400);
+      return next(new Error(
+        'This Aadhaar number is already linked to another account. Each Aadhaar can only be used once.'
+      ));
+    }
+
     const kycData = {
       aadhaarNumber,
       panNumber: panNumber || '',
@@ -135,7 +149,11 @@ const reviewKYC = async (req, res, next) => {
 
     // Update user kycStatus and isVerified
     const updateData = { kycStatus: status };
-    if (status === 'Approved') updateData.isVerified = true;
+    if (status === 'Approved') {
+      updateData.isVerified = true;
+    } else if (status === 'Rejected') {
+      updateData.isVerified = false;
+    }
     const user = await User.findByIdAndUpdate(record.user, updateData, { new: true });
 
     // Send notification to user

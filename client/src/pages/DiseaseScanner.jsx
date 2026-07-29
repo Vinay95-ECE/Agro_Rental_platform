@@ -6,6 +6,7 @@ import {
   Trash2, Clock, Leaf, Zap, FlaskConical, Bug, ShieldAlert, Video,
   Play, Square, Radio, CheckCircle, XCircle, Info, ChevronRight
 } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 
 // ─── Severity Badge ───────────────────────────────────────────────────────────
 const SeverityBadge = ({ severity }) => {
@@ -154,6 +155,7 @@ const DiagnosisPanel = ({ result, imagePreview, analysisMethod }) => {
 // ─── Main DiseaseScanner Component ───────────────────────────────────────────
 const DiseaseScanner = () => {
   const { token } = useSelector((state) => state.auth);
+  const toast = useToast();
   const fileInputRef = useRef(null);
   const videoInputRef = useRef(null);
   const webcamVideoRef = useRef(null);
@@ -182,7 +184,7 @@ const DiseaseScanner = () => {
   const [webcamResult, setWebcamResult] = useState(null);
   const [webcamFrameCount, setWebcamFrameCount] = useState(0);
 
-  const crops = ['Tomato', 'Potato', 'Corn', 'Apple', 'Grape', 'Soybean', 'Pepper', 'Wheat', 'Rice'];
+  const crops = ['Tomato', 'Potato', 'Wheat', 'Paddy', 'Corn', 'Apple', 'Grape', 'Soybean', 'Pepper', 'Rice'];
 
   // Load scan history
   const loadHistory = useCallback(async () => {
@@ -233,6 +235,12 @@ const DiseaseScanner = () => {
       if (token) headers.Authorization = `Bearer ${token}`;
       const res = await axios.post('/api/disease/analyze', formData, { headers });
       if (res.data.success) {
+        if (res.data.is_plant === false) {
+          setError('Irrelevant image. Please upload a clear photo of a crop or leaf.');
+          toast.error('Irrelevant image. Please upload the right image.', 'Invalid Image');
+          return;
+        }
+        
         setResult(res.data.diagnosis);
         setAnalysisMethod(res.data.analysisMethod || res.data.diagnosis?.analysisMethod || '');
         if (res.data.imagePreview) setImagePreview(res.data.imagePreview);

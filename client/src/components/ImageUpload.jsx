@@ -25,6 +25,7 @@ export const ImageUpload = ({
 
   const ENDPOINTS = {
     avatar: '/upload/avatar',
+    registerAvatar: '/upload/registerAvatar',
     crop: '/upload/crop',
     machine: '/upload/machine',
     kyc: '/upload/kyc',
@@ -63,7 +64,7 @@ export const ImageUpload = ({
     try {
       const formData = new FormData();
       const fieldName = folder === 'kyc' ? 'document'
-        : folder === 'avatar' ? 'avatar'
+        : (folder === 'avatar' || folder === 'registerAvatar') ? 'avatar'
         : ['crop', 'machine', 'product'].includes(folder) ? 'images'
         : 'image';
       formData.append(fieldName, file);

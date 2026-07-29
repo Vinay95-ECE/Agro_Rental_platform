@@ -85,6 +85,14 @@ const Quiz = () => {
   const [quizStarted, setQuizStarted] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30);
   const [earnedAchievements, setEarnedAchievements] = useState([]);
+  const [quizStats, setQuizStats] = useState(null);
+
+  // Fetch true stats
+  useEffect(() => {
+    axios.get('/api/game/quiz/stats')
+      .then(res => { if (res.data.success) setQuizStats(res.data); })
+      .catch(() => {});
+  }, []);
 
   // Fetch questions from API, fallback to local bank
   const filterAndStartQuiz = async () => {
@@ -310,10 +318,22 @@ const Quiz = () => {
                   📊 Available questions:
                   <span className="text-white font-bold ml-2">
                     {(() => {
-                      let f = QUESTION_BANK;
-                      if (selectedCategory !== 'All') f = f.filter(q => q.category === selectedCategory);
-                      if (selectedDifficulty !== 'All') f = f.filter(q => q.difficulty === selectedDifficulty);
-                      return `${Math.min(10, f.length)} questions`;
+                      if (quizStats) {
+                        if (selectedCategory === 'All' && selectedDifficulty === 'All') return `${quizStats.totalQuestions} questions pool (10 random per quiz)`;
+                        let count = 0;
+                        if (selectedCategory !== 'All') {
+                          const catStat = quizStats.stats.find(s => s.category === selectedCategory);
+                          if (catStat) {
+                            if (selectedDifficulty === 'All') count = catStat.total;
+                            else count = catStat[selectedDifficulty.toLowerCase()] || 0;
+                          }
+                        } else {
+                          // All categories, specific difficulty
+                          count = quizStats.stats.reduce((acc, curr) => acc + (curr[selectedDifficulty.toLowerCase()] || 0), 0);
+                        }
+                        return `${count} questions pool (10 random per quiz)`;
+                      }
+                      return `10000+ questions pool (10 random per quiz)`;
                     })()}
                   </span>
                   <span className="ml-2 text-slate-500">• 30 seconds per question • 10 XP per correct answer</span>
@@ -565,7 +585,11 @@ const Quiz = () => {
                   <button key={cat} onClick={() => { setSelectedCategory(cat); if (!quizStarted) {} }}
                     className="w-full flex items-center justify-between text-[11px] text-slate-400 hover:text-white transition-colors py-1">
                     <span>{cat}</span>
-                    <span className="text-slate-600">{QUESTION_BANK.filter(q => q.category === cat).length} Qs</span>
+                    <span className="text-slate-600">
+                      {quizStats 
+                        ? (quizStats.stats.find(s => s.category === cat)?.total || 0) + ' Qs' 
+                        : '1000+ Qs'}
+                    </span>
                   </button>
                 ))}
               </div>

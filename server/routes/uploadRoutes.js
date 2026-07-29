@@ -41,6 +41,21 @@ router.post(
   }
 );
 
+// @desc    Upload profile avatar (Public for Registration)
+// @route   POST /api/upload/registerAvatar
+// @access  Public
+router.post(
+  '/registerAvatar',
+  upload.single('avatar'),
+  processImage('avatars'),
+  (req, res) => {
+    if (!req.uploadedImage) {
+      return res.status(400).json({ success: false, message: 'No avatar image provided.' });
+    }
+    res.json({ success: true, url: req.uploadedImage.url });
+  }
+);
+
 // @desc    Upload crop images (up to 5)
 // @route   POST /api/upload/crop
 // @access  Private
