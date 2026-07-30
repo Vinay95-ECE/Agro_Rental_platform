@@ -647,8 +647,7 @@ User question: ${message}`;
           source: 'gemini'
         });
       } catch (geminiErr) {
-        const isQuota = geminiErr.message?.includes('429') || geminiErr.message?.includes('quota');
-        console.error(isQuota ? '⚡ Gemini quota exceeded — using rule-based fallback' : `Gemini API error: ${geminiErr.message}`);
+        console.error("Gemini API error detail:", geminiErr);
         // Fall through to rule-based
       }
     }
