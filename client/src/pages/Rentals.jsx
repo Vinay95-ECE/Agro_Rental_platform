@@ -28,6 +28,7 @@ const Rentals = () => {
   const [notes, setNotes] = useState('');
   const [bookingLoading, setBookingLoading] = useState(false);
   const [toolBookings, setToolBookings] = useState([]);
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
 
   // Comparison
   const [comparisonList, setComparisonList] = useState([]);
@@ -198,49 +199,128 @@ const Rentals = () => {
   };
 
 
-  const getCalendarStatus = (dateString) => {
-    const checkDate = new Date(dateString);
-    checkDate.setHours(0, 0, 0, 0);
+  // ─── Helper: get local YYYY-MM-DD string without UTC conversion ───────────────
+  const toLocalDateStr = (date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  const getCalendarStatus = (localDateStr) => {
+    // Parse as local midnight to avoid UTC offset shift
+    const [y, m, d] = localDateStr.split('-').map(Number);
+    const checkDate = new Date(y, m - 1, d);
+
+    // Check if date is in user-selected range
+    if (startDate && endDate) {
+      const [sy, sm, sd] = startDate.split('-').map(Number);
+      const [ey, em, ed] = endDate.split('-').map(Number);
+      const selStart = new Date(sy, sm - 1, sd);
+      const selEnd   = new Date(ey, em - 1, ed);
+      if (checkDate >= selStart && checkDate <= selEnd) {
+        return 'selected';
+      }
+    }
 
     const booking = toolBookings.find(b => {
-      const start = new Date(b.startDate);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(b.endDate);
-      end.setHours(0, 0, 0, 0);
-      return checkDate >= start && checkDate <= end;
+      const bStart = new Date(b.startDate);
+      bStart.setHours(0, 0, 0, 0);
+      const bEnd = new Date(b.endDate);
+      bEnd.setHours(0, 0, 0, 0);
+      return checkDate >= bStart && checkDate <= bEnd;
     });
 
-    if (!booking) return 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400';
-    if (booking.status === 'Pending') return 'bg-amber-500/20 border-amber-500/40 text-amber-300';
-    return 'bg-red-500/20 border-red-500/40 text-red-400';
+    if (!booking) return 'available';
+    if (booking.status === 'Pending') return 'pending';
+    return 'booked';
   };
 
   const renderVisualCalendar = () => {
-    const days = [];
     const today = new Date();
-    for (let i = 0; i < 15; i++) {
-      const day = new Date(today);
-      day.setDate(today.getDate() + i);
-      days.push(day);
+    today.setHours(0, 0, 0, 0);
+
+    const year  = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const statusStyles = {
+      available: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 cursor-pointer',
+      pending:   'bg-amber-500/20 border-amber-500/40 text-amber-300',
+      booked:    'bg-red-500/20 border-red-500/40 text-red-400',
+      selected:  'bg-emerald-500 border-emerald-400 text-white font-extrabold shadow-lg shadow-emerald-500/20',
+      past:      'bg-slate-900/50 border-slate-800 text-slate-600',
+    };
+
+    const weekdays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+    const cells = [];
+    // Empty cells for offset
+    for (let i = 0; i < firstDay; i++) {
+      cells.push(<div key={`empty-${i}`} />);
+    }
+    // Day cells
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month, day);
+      const dateStr = toLocalDateStr(date);
+      const isPast = date < today;
+      const status = isPast ? 'past' : getCalendarStatus(dateStr);
+
+      cells.push(
+        <div
+          key={day}
+          onClick={() => {
+            if (isPast || status === 'booked' || status === 'pending') return;
+            if (!startDate || (startDate && endDate)) {
+              setStartDate(dateStr);
+              setEndDate('');
+            } else {
+              if (dateStr > startDate) setEndDate(dateStr);
+              else { setStartDate(dateStr); setEndDate(''); }
+            }
+          }}
+          className={`aspect-square rounded-xl border text-center text-xs flex flex-col items-center justify-center font-bold transition-all ${
+            statusStyles[status]
+          }`}
+        >
+          <span className="text-[11px] leading-none">{day}</span>
+        </div>
+      );
     }
 
     return (
-      <div className="grid grid-cols-5 gap-2.5">
-        {days.map((day, idx) => {
-          const dateStr = day.toISOString().split('T')[0];
-          const statusClass = getCalendarStatus(dateStr);
-          return (
-            <div
-              key={idx}
-              className={`p-2.5 rounded-xl border text-center text-xs flex flex-col items-center justify-center font-bold ${statusClass}`}
-            >
-              <span className="text-[10px] opacity-60">
-                {day.toLocaleDateString(undefined, { weekday: 'short' })}
-              </span>
-              <span className="text-sm mt-0.5">{day.getDate()}</span>
-            </div>
-          );
-        })}
+      <div className="space-y-3">
+        {/* Month Navigation */}
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setCalendarMonth(new Date(year, month - 1, 1))}
+            disabled={year === today.getFullYear() && month <= today.getMonth()}
+            className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-xs font-bold"
+          >◀</button>
+          <span className="text-xs font-bold text-slate-200">
+            {calendarMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+          </span>
+          <button
+            type="button"
+            onClick={() => setCalendarMonth(new Date(year, month + 1, 1))}
+            className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-colors text-xs font-bold"
+          >▶</button>
+        </div>
+
+        {/* Weekday headers */}
+        <div className="grid grid-cols-7 gap-1">
+          {weekdays.map(w => (
+            <div key={w} className="text-center text-[10px] text-slate-500 font-bold py-1">{w}</div>
+          ))}
+          {cells.map((cell, i) => (
+            <React.Fragment key={i}>{cell}</React.Fragment>
+          ))}
+        </div>
+
+        {/* Tip */}
+        <p className="text-[10px] text-slate-500 text-center">Click a date to set start, click again to set end date</p>
       </div>
     );
   };
@@ -473,8 +553,9 @@ const Rentals = () => {
                     <input
                       type="date"
                       required
+                      min={toLocalDateStr(new Date())}
                       value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
+                      onChange={(e) => { setStartDate(e.target.value); setEndDate(''); }}
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-emerald-500"
                     />
                   </div>
@@ -483,12 +564,31 @@ const Rentals = () => {
                     <input
                       type="date"
                       required
+                      min={startDate || toLocalDateStr(new Date())}
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-emerald-500"
                     />
                   </div>
                 </div>
+
+                {/* Live Cost Preview */}
+                {startDate && endDate && (() => {
+                  const days = Math.round((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24));
+                  const cost = days * selectedTool.rentRates.daily;
+                  return days > 0 ? (
+                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Estimated Cost</p>
+                        <p className="text-emerald-400 font-extrabold text-base">₹{cost.toLocaleString()}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Duration</p>
+                        <p className="text-white font-bold text-sm">{days} Day{days > 1 ? 's' : ''}</p>
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
 
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Rental Notes</label>
