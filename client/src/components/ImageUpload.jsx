@@ -4,7 +4,11 @@ import axios from 'axios';
 import { useSelector } from 'react-redux';
 
 // Use relative path so Vite's proxy works in dev; override with VITE_API_URL in production
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+const API_BASE = (() => {
+  const url = import.meta.env.VITE_API_URL;
+  if (!url) return '/api';
+  return url.endsWith('/api') ? url : `${url.replace(/\/$/, '')}/api`;
+})();
 
 // ─── Single image uploader ─────────────────────────────────────────────────────
 export const ImageUpload = ({
