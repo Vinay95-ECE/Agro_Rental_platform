@@ -1271,13 +1271,54 @@ const Dashboards = () => {
           {activeTab === 'analytics' && (
             <div className="space-y-6">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <StatCard label="Revenue" value={`₹${analytics.revenue}`} icon={DollarSign} color="bg-emerald-500/10 text-emerald-400" sub="Total earned" />
-                <StatCard label="Items" value={analytics.count || myProducts.length} icon={Package} color="bg-blue-500/10 text-blue-400" sub="Active listings" />
-                <StatCard label="Bookings" value={bookings.length || analytics.count} icon={Calendar} color="bg-purple-500/10 text-purple-400" sub="All time" />
-                <StatCard label="Pending" value={analytics.pending || 0} icon={Clock} color="bg-amber-500/10 text-amber-400" sub="Needs action" />
+                <StatCard 
+                  label="Revenue" 
+                  value={role === 'Admin' 
+                    ? `₹${(adminStats?.stats?.totalRevenue || 0).toLocaleString('en-IN')}` 
+                    : `₹${analytics.revenue}`
+                  } 
+                  icon={DollarSign} 
+                  color="bg-emerald-500/10 text-emerald-400" 
+                  sub={role === 'Admin' ? "Total platform revenue" : "Total earned"} 
+                />
+                <StatCard 
+                  label="Items" 
+                  value={role === 'Admin' 
+                    ? (adminStats?.stats?.totalTools || 0) + (adminStats?.stats?.totalProducts || 0) 
+                    : (analytics.count || myProducts.length)
+                  } 
+                  icon={Package} 
+                  color="bg-blue-500/10 text-blue-400" 
+                  sub={role === 'Admin' ? "Platform listings" : "Active listings"} 
+                />
+                <StatCard 
+                  label="Bookings" 
+                  value={role === 'Admin' 
+                    ? (adminStats?.stats?.totalBookings || 0) 
+                    : (bookings.length || analytics.count)
+                  } 
+                  icon={Calendar} 
+                  color="bg-purple-500/10 text-purple-400" 
+                  sub={role === 'Admin' ? "Platform bookings" : "All time"} 
+                />
+                <StatCard 
+                  label="Pending" 
+                  value={role === 'Admin' 
+                    ? (adminStats?.stats?.pendingBookings || 0) + (adminStats?.stats?.pendingKYC || 0) 
+                    : (analytics.pending || 0)
+                  } 
+                  icon={Clock} 
+                  color="bg-amber-500/10 text-amber-400" 
+                  sub="Needs action" 
+                />
               </div>
 
-              {monthlyRevenueData.length > 0 ? (
+              {role === 'Admin' ? (
+                <div className="glass border border-slate-800 rounded-2xl p-8 text-center">
+                  <TrendingUp size={32} className="text-slate-700 mx-auto mb-3" />
+                  <p className="text-slate-400 text-sm">Please visit the dedicated Admin Panel for detailed graphical trend reports.</p>
+                </div>
+              ) : monthlyRevenueData.length > 0 ? (
                 <div className="glass border border-slate-800 rounded-2xl p-5">
                   <SectionHeader icon={TrendingUp} title="Revenue Trend" />
                   <ResponsiveContainer width="100%" height={250}>
