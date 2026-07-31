@@ -1,3 +1,53 @@
+# 🌾 AgriRent Hub — Agricultural Equipment Rental Platform
+
+<div align="center">
+
+[![🚀 Live Demo](https://img.shields.io/badge/🚀%20Live%20Demo-Click%20to%20Open-brightgreen?style=for-the-badge&logo=render&logoColor=white)](https://agro-rental-platform.onrender.com)
+[![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://agro-rental-platform.onrender.com)
+[![Node.js](https://img.shields.io/badge/Node.js-Express-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://agro-rental-platform.onrender.com)
+[![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://agro-rental-platform.onrender.com)
+
+</div>
+
+---
+
+## 🌐 Live Deployed Application
+
+> **[👉 https://agro-rental-platform.onrender.com](https://agro-rental-platform.onrender.com)**
+
+Click the link above to open the live project instantly. No setup required.
+
+---
+
+## 📌 Project Overview
+
+**AgriRent Hub** is a full-stack web platform that enables farmers to rent agricultural equipment from tool owners. It includes role-based access, AI-powered crop disease detection, real-time booking, integrated payments, and an intelligent advisory system.
+
+### ✨ Key Features
+
+| Feature | Description |
+|---|---|
+| 🚜 **Equipment Rental** | Browse, book & rent farm machinery with real-time availability |
+| 🤖 **AI Disease Scanner** | Google Gemini Vision API for crop disease detection |
+| 💳 **Payments** | Razorpay integration with demo mode |
+| 🌤️ **Weather Advisory** | Live weather data via OpenWeather API |
+| 🛒 **Agri Marketplace** | Seeds, fertilizers & products from local shopkeepers |
+| 🗺️ **Maps** | Leaflet.js + OpenStreetMap for location-based search |
+| 📊 **Analytics Dashboard** | Revenue, bookings & KYC management for admins |
+| 🔐 **Role-Based Access** | Farmer / Tool Owner / Shopkeeper / Admin roles |
+
+### 🛠️ Tech Stack
+
+| Layer | Technologies |
+|---|---|
+| **Frontend** | React 18 · Redux Toolkit · TailwindCSS · Recharts · Socket.io |
+| **Backend** | Node.js · Express.js · MongoDB · JWT Auth · Socket.io |
+| **AI / ML** | Google Gemini Vision API · Rule-based fallback · YOLO11 (optional) |
+| **DevOps** | Docker · Render (deployed) · MongoDB Atlas |
+| **Integrations** | Razorpay · Cloudinary · OpenWeatherMap · Leaflet.js |
+
+---
+
 # 🌾 AgriRent Hub — Production Setup Guide
 
 ## Quick Start (Development)
