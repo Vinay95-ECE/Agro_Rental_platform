@@ -46,6 +46,7 @@ const protect = async (req, res, next) => {
   }
 };
 
+
 // ─── Optional protect: attaches user if token valid, allows guests through ─────
 const optionalProtect = async (req, res, next) => {
   let token;
