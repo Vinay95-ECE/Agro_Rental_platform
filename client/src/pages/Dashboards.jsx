@@ -10,7 +10,8 @@ import {
   BarChart3, Users, DollarSign, ShoppingBag, ShieldCheck, FileText, Check, X,
   PlusCircle, Trash2, Star, TrendingUp, Package, Calendar, Activity,
   Leaf, Bot, Award, CreditCard, RefreshCw, Edit2, AlertTriangle,
-  CheckCircle, Clock, Zap, Eye, MapPin
+  CheckCircle, Clock, Zap, Eye, MapPin, Tractor, Store, Wheat,
+  Microscope, Settings, CloudRain
 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { ImageUpload, MultiImageUpload } from '../components/ImageUpload';
@@ -418,34 +419,78 @@ const Dashboards = () => {
   return (
     <div className="space-y-8">
 
-      {/* Header */}
-      <div className="flex items-start justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            {role === 'Farmer' || role === 'Buyer' ? '🌾' : role === 'Tool Owner' ? '🚜' : role === 'Shopkeeper' ? '🛒' : '⚙️'}
-            {role} Dashboard
-          </h1>
-          <p className="text-slate-400 text-xs mt-1">
-            Welcome back, <span className="text-emerald-400 font-bold">{user?.name}</span> •
-            <span className={`ml-1 text-[10px] font-bold px-2 py-0.5 rounded ${
-              user?.kycStatus === 'Approved' ? 'text-emerald-400 bg-emerald-500/10' : 'text-amber-400 bg-amber-500/10'
-            }`}>
-              KYC: {user?.kycStatus}
-            </span>
-          </p>
+      {/* Premium Dashboard Header */}
+      <div className="relative rounded-3xl overflow-hidden mb-8 border border-slate-800 shadow-2xl">
+        {/* Background Image based on Role */}
+        <div className="absolute inset-0">
+          <img 
+            src={role === 'Tool Owner' ? '/images/tractor_owner.png' : role === 'Shopkeeper' ? '/images/blog_mandi.png' : '/images/hero_farmer.png'} 
+            alt="Dashboard Background" 
+            className="w-full h-full object-cover opacity-30 mix-blend-overlay"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/60 to-transparent" />
         </div>
-        <div className="flex items-center gap-3 text-xs">
-          <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl">
-            <span className="text-amber-400">🪙</span>
-            <span className="font-bold text-white">{user?.coins}</span>
+
+        {/* Content */}
+        <div className="relative p-6 sm:p-10 flex flex-col sm:flex-row items-center sm:items-end justify-between gap-6">
+          <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 w-full sm:w-auto text-center sm:text-left">
+            {/* Avatar Placeholder */}
+            <div className="relative group cursor-pointer">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 p-1 shadow-lg shadow-emerald-500/20 transition-transform group-hover:scale-105">
+                <div className="w-full h-full bg-slate-900 rounded-xl flex items-center justify-center border border-slate-800">
+                  {role === 'Farmer' || role === 'Buyer' ? <Wheat size={40} className="text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]" /> :
+                   role === 'Tool Owner' ? <Tractor size={40} className="text-blue-400 drop-shadow-[0_0_8px_rgba(96,165,250,0.5)]" /> :
+                   role === 'Shopkeeper' ? <Store size={40} className="text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]" /> :
+                   <Settings size={40} className="text-slate-400" />}
+                </div>
+              </div>
+              <div className="absolute -bottom-2 -right-2 bg-slate-950 rounded-full p-1 border border-slate-800">
+                <div className={`w-4 h-4 rounded-full ${user?.kycStatus === 'Approved' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.6)]' : 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.6)] animate-pulse'}`} />
+              </div>
+            </div>
+
+            {/* Details */}
+            <div className="space-y-1.5 pb-2">
+              <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight drop-shadow-lg">
+                {role} Dashboard
+              </h1>
+              <p className="text-slate-300 text-sm sm:text-base flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                <span>Welcome back, <span className="text-white font-bold">{user?.name}</span></span>
+                <span className="hidden sm:inline text-slate-600">•</span>
+                <span className={`inline-flex items-center gap-1 text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full backdrop-blur-sm ${
+                  user?.kycStatus === 'Approved' ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20' : 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
+                }`}>
+                  {user?.kycStatus === 'Approved' ? <ShieldCheck size={12} /> : <AlertTriangle size={12} />}
+                  KYC: {user?.kycStatus}
+                </span>
+              </p>
+            </div>
           </div>
-          <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl">
-            <span className="text-emerald-400">⚡</span>
-            <span className="font-bold text-white">{user?.xp} XP</span>
+
+          {/* Badges / Stats */}
+          <div className="flex items-center gap-4 sm:gap-6 bg-slate-950/60 backdrop-blur-md p-4 rounded-2xl border border-slate-800/50 shadow-2xl w-full sm:w-auto justify-center sm:justify-end">
+            <div className="flex flex-col items-center px-2 sm:px-4 border-r border-slate-800/50">
+              <span className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Agri Coins</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-amber-400 text-base sm:text-lg drop-shadow-md">🪙</span>
+                <span className="font-black text-white text-base sm:text-xl">{user?.coins || 0}</span>
+              </div>
+            </div>
+            <div className="flex flex-col items-center px-2 sm:px-4 border-r border-slate-800/50">
+              <span className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Experience</span>
+              <div className="flex items-center gap-1.5">
+                <Zap size={16} className="text-blue-400 drop-shadow-md" fill="currentColor" />
+                <span className="font-black text-white text-base sm:text-xl">{user?.xp || 0} <span className="text-[10px] sm:text-xs text-slate-500 font-bold">XP</span></span>
+              </div>
+            </div>
+            <div className="flex flex-col items-center pl-2 sm:pl-4">
+              <span className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Current Rank</span>
+              <span className="text-[10px] sm:text-xs bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 px-3 py-1 rounded-lg font-black shadow-lg shadow-emerald-500/20 uppercase tracking-wide">
+                {user?.badge || 'Beginner'}
+              </span>
+            </div>
           </div>
-          <span className="text-[10px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2 py-1 rounded-lg font-bold">
-            {user?.badge}
-          </span>
         </div>
       </div>
 
@@ -542,12 +587,14 @@ const Dashboards = () => {
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {[
-                    { role: 'Farmers', desc: 'Verify via 12-digit Aadhaar Card', icon: '🌾' },
-                    { role: 'Tool Owners', desc: 'Submit machinery registration documents', icon: '🚜' },
-                    { role: 'Shopkeepers', desc: 'Provide shop license / GST certificate', icon: '🏪' },
+                    { role: 'Farmers', desc: 'Verify via 12-digit Aadhaar Card', icon: Wheat, color: 'text-emerald-400' },
+                    { role: 'Tool Owners', desc: 'Submit machinery registration documents', icon: Tractor, color: 'text-blue-400' },
+                    { role: 'Shopkeepers', desc: 'Provide shop license / GST certificate', icon: Store, color: 'text-amber-400' },
                   ].map(item => (
                     <div key={item.role} className="bg-slate-900/40 border border-slate-800 rounded-xl p-4 space-y-2">
-                      <span className="text-2xl">{item.icon}</span>
+                      <div className={`p-2 inline-flex bg-slate-900 rounded-lg border border-slate-800 ${item.color}`}>
+                        <item.icon size={24} />
+                      </div>
                       <p className="text-xs font-bold text-white">{item.role}</p>
                       <p className="text-[10px] text-slate-400 leading-relaxed">{item.desc}</p>
                     </div>
@@ -572,14 +619,16 @@ const Dashboards = () => {
                 <SectionHeader icon={Zap} title="Quick Actions" />
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {[
-                    { label: 'Book Equipment', path: '/rentals', emoji: '🚜', color: 'border-emerald-500/30 hover:border-emerald-500' },
-                    { label: 'Detect Disease', path: '/disease-scanner', emoji: '🔬', color: 'border-blue-500/30 hover:border-blue-500' },
-                    { label: 'AI Agronomist', path: '/ai-advisory', emoji: '🤖', color: 'border-purple-500/30 hover:border-purple-500' },
-                    { label: 'Weather Forecast', path: '/weather', emoji: '🌦️', color: 'border-amber-500/30 hover:border-amber-500' },
+                    { label: 'Book Equipment', path: '/rentals', icon: Tractor, color: 'border-emerald-500/30 hover:border-emerald-500', iconColor: 'text-emerald-400' },
+                    { label: 'Detect Disease', path: '/disease-scanner', icon: Microscope, color: 'border-blue-500/30 hover:border-blue-500', iconColor: 'text-blue-400' },
+                    { label: 'AI Agronomist', path: '/ai-advisory', icon: Bot, color: 'border-purple-500/30 hover:border-purple-500', iconColor: 'text-purple-400' },
+                    { label: 'Weather Forecast', path: '/weather', icon: CloudRain, color: 'border-amber-500/30 hover:border-amber-500', iconColor: 'text-amber-400' },
                   ].map(action => (
                     <a key={action.label} href={action.path}
-                      className={`flex flex-col items-center gap-2 p-4 bg-slate-900/40 border rounded-xl transition-all text-center group ${action.color}`}>
-                      <span className="text-2xl group-hover:scale-110 transition-transform">{action.emoji}</span>
+                      className={`flex flex-col items-center gap-3 p-4 bg-slate-900/40 border rounded-xl transition-all text-center group ${action.color}`}>
+                      <div className={`p-2.5 rounded-xl bg-slate-900 border border-slate-800 group-hover:scale-110 transition-transform ${action.iconColor}`}>
+                        <action.icon size={24} />
+                      </div>
                       <span className="text-[11px] font-bold text-slate-300 group-hover:text-white">{action.label}</span>
                     </a>
                   ))}

@@ -28,7 +28,7 @@ import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminRoute from './components/AdminRoute';
 
-import { Bell, LogOut, Award, Shield, User as UserIcon, MessageCircle } from 'lucide-react';
+import { Bell, LogOut, Award, Shield, User as UserIcon, MessageCircle, Sprout, CloudRain } from 'lucide-react';
 
 const Navigation = () => {
   const { language, setLanguage, t } = useLanguage();
@@ -150,7 +150,9 @@ const Navigation = () => {
           
           {/* Logo brand */}
           <div className="flex items-center gap-3">
-            <span className="text-3xl">🌱</span>
+            <div className="p-2 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl shadow-lg shadow-emerald-500/20">
+              <Sprout size={24} className="text-slate-950" strokeWidth={2.5} />
+            </div>
             <div className="flex flex-col">
               <Link to="/" className="text-lg font-bold tracking-tight text-white hover:text-emerald-400 transition-colors">
                 AgriRent <span className="text-emerald-500">Hub</span>
@@ -169,7 +171,7 @@ const Navigation = () => {
             
             <Link to="/ai-advisory" className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-300 hover:text-white transition-colors">{t('aiAssistant')}</Link>
             <Link to="/disease-scanner" className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-300 hover:text-white transition-colors">{t('diseaseDetect')}</Link>
-            <Link to="/weather" className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-300 hover:text-white transition-colors">🌦️ Weather</Link>
+            <Link to="/weather" className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-300 hover:text-white transition-colors flex items-center gap-1.5"><CloudRain size={14} className="text-blue-400" /> Weather</Link>
             <Link to="/price-prediction" className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-300 hover:text-white transition-colors">{t('pricePredict')}</Link>
             <Link to="/quiz" className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-300 hover:text-white transition-colors">{t('dailyQuiz')}</Link>
             
