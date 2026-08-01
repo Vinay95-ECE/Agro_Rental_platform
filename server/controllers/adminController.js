@@ -119,9 +119,9 @@ const getDashboardStats = async (req, res, next) => {
       Order.countDocuments({}),
       Order.countDocuments({ status: 'Pending' }),
       Order.countDocuments({ status: 'Delivered' }),
-      Payment.aggregate([{ $match: { status: 'Completed', createdAt: { $gte: startOfToday } } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
-      Payment.aggregate([{ $match: { status: 'Completed', createdAt: { $gte: startOfMonth } } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
-      Payment.aggregate([{ $match: { status: 'Completed' } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
+      Booking.aggregate([{ $match: { status: { $in: ['Approved', 'Completed'] }, createdAt: { $gte: startOfToday } } }, { $group: { _id: null, total: { $sum: '$totalAmount' } } }]),
+      Booking.aggregate([{ $match: { status: { $in: ['Approved', 'Completed'] }, createdAt: { $gte: startOfMonth } } }, { $group: { _id: null, total: { $sum: '$totalAmount' } } }]),
+      Booking.aggregate([{ $match: { status: { $in: ['Approved', 'Completed'] } } }, { $group: { _id: null, total: { $sum: '$totalAmount' } } }]),
       User.countDocuments({ isSuspended: true })
     ]);
 
@@ -717,12 +717,12 @@ const getRevenueAnalytics = async (req, res, next) => {
     const now = new Date();
     const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
 
-    const monthlyRevenue = await Payment.aggregate([
-      { $match: { createdAt: { $gte: twelveMonthsAgo }, status: 'Completed' } },
+    const monthlyRevenue = await Booking.aggregate([
+      { $match: { createdAt: { $gte: twelveMonthsAgo }, status: { $in: ['Approved', 'Completed'] } } },
       {
         $group: {
           _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } },
-          revenue: { $sum: '$amount' },
+          revenue: { $sum: '$totalAmount' },
           count: { $sum: 1 }
         }
       },
@@ -737,12 +737,12 @@ const getRevenueAnalytics = async (req, res, next) => {
     }));
 
     const eightWeeksAgo = new Date(Date.now() - 8 * 7 * 24 * 60 * 60 * 1000);
-    const weeklyRevenue = await Payment.aggregate([
-      { $match: { createdAt: { $gte: eightWeeksAgo }, status: 'Completed' } },
+    const weeklyRevenue = await Booking.aggregate([
+      { $match: { createdAt: { $gte: eightWeeksAgo }, status: { $in: ['Approved', 'Completed'] } } },
       {
         $group: {
           _id: { week: { $week: '$createdAt' }, year: { $year: '$createdAt' } },
-          revenue: { $sum: '$amount' },
+          revenue: { $sum: '$totalAmount' },
           count: { $sum: 1 }
         }
       },

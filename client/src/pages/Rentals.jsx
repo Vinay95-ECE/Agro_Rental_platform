@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import axios from 'axios';
 import { MapPin, Shield, Calendar, Layers, Sliders, AlertTriangle, CreditCard } from 'lucide-react';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { useToast } from '../context/ToastContext';
 import { SkeletonCard, PageLoader } from '../components/Skeleton';
 
@@ -91,15 +93,14 @@ const Rentals = () => {
 
   // Leaflet Map Setup
   useEffect(() => {
-    if (mapRef.current && window.L) {
-      const L = window.L;
-      
+    if (mapRef.current) {
       // Initialize map instance once
       if (!mapInstance.current) {
-        mapInstance.current = L.map(mapRef.current).setView([coords.lat, coords.lng], 11);
+        mapInstance.current = L.map(mapRef.current, { zoomControl: false }).setView([coords.lat, coords.lng], 11);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '&copy; OpenStreetMap contributors'
         }).addTo(mapInstance.current);
+        L.control.zoom({ position: 'bottomright' }).addTo(mapInstance.current);
       } else {
         mapInstance.current.setView([coords.lat, coords.lng], 11);
       }
@@ -111,8 +112,10 @@ const Rentals = () => {
       // Add user position marker
       const userMarker = L.marker([coords.lat, coords.lng], {
         icon: L.divIcon({
-          html: `<div class="h-4 w-4 bg-blue-500 rounded-full border-2 border-white shadow-lg animate-ping"></div>`,
-          className: 'custom-user-marker'
+          html: `<div class="relative flex items-center justify-center h-5 w-5"><div class="absolute h-full w-full bg-blue-500 rounded-full opacity-60 animate-ping"></div><div class="relative h-3 w-3 bg-blue-600 rounded-full border-2 border-white shadow-md"></div></div>`,
+          className: 'custom-user-marker',
+          iconSize: [20, 20],
+          iconAnchor: [10, 10]
         })
       }).addTo(mapInstance.current).bindPopup('<b>Your Location</b>');
       markersRef.current.push(userMarker);
@@ -120,14 +123,24 @@ const Rentals = () => {
       // Add tool markers
       tools.forEach(tool => {
         if (tool.location && tool.location.coordinates) {
-          const marker = L.marker([tool.location.coordinates[1], tool.location.coordinates[0]])
+          const catEmoji = tool.category === 'Tractor' ? '🚜' : tool.category === 'Water Pump' ? '💧' : '⚙️';
+          const marker = L.marker([tool.location.coordinates[1], tool.location.coordinates[0]], {
+            icon: L.divIcon({
+              html: `<div class="h-7 w-7 bg-emerald-500 hover:bg-emerald-400 rounded-full border-2 border-slate-950 flex items-center justify-center text-xs shadow-lg transition-transform hover:scale-115 cursor-pointer">${catEmoji}</div>`,
+              className: 'custom-tool-marker',
+              iconSize: [28, 28],
+              iconAnchor: [14, 14]
+            })
+          })
             .addTo(mapInstance.current)
             .bindPopup(`
-              <div class="p-1">
-                <p class="font-bold text-slate-800 text-xs">${tool.name}</p>
-                <p class="text-[10px] text-slate-500 font-semibold">${tool.category}</p>
-                <p class="text-xs text-emerald-600 font-bold mt-1">₹${tool.rentRates.daily}/Day</p>
-                <p class="text-[9px] text-slate-400 font-bold mt-0.5">${tool.distance} km away</p>
+              <div class="p-2 space-y-1.5 min-w-[130px] font-sans">
+                <p class="font-extrabold text-slate-900 text-xs">${tool.name}</p>
+                <p class="text-[9px] text-slate-500 font-bold uppercase tracking-wide">${tool.category}</p>
+                <div class="flex items-center justify-between border-t border-slate-100 pt-1.5 mt-1.5">
+                  <span class="text-xs text-emerald-600 font-black">₹${tool.rentRates.daily}/Day</span>
+                  <span class="text-[9px] text-slate-400 font-bold">${tool.distance ? `${tool.distance.toFixed(1)} km` : ''}</span>
+                </div>
               </div>
             `);
           markersRef.current.push(marker);
