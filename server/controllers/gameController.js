@@ -1,6 +1,16 @@
 const User = require('../models/User');
 const QUIZ_QUESTIONS = require('../data/quizQuestions');
 
+// ─── Role-aware badge computation ────────────────────────────────────────────
+const computeBadge = (xp, role) => {
+  const suffix = role === 'Tool Owner' ? 'Owner' : role === 'Shopkeeper' ? 'Merchant' : role === 'Admin' ? 'Admin' : 'Farmer';
+  if (role === 'Admin') return 'Super Admin';
+  if (xp >= 1000) return `Master ${suffix}`;
+  if (xp >= 500)  return `Expert ${suffix}`;
+  if (xp >= 100)  return `Skilled ${suffix}`;
+  return `Beginner ${suffix}`;
+};
+
 // Fisher-Yates shuffle
 const shuffleArray = (arr) => {
   const a = [...arr];
@@ -89,11 +99,8 @@ const submitQuizResult = async (req, res, next) => {
     user.xp += xpReward;
     user.coins += coinsReward;
 
-    // Badge upgrades
-    if (user.xp >= 1000) user.badge = 'Master Farmer';
-    else if (user.xp >= 500) user.badge = 'Expert Farmer';
-    else if (user.xp >= 100) user.badge = 'Skilled Farmer';
-
+    // Badge upgrades (role-aware)
+    user.badge = computeBadge(user.xp, user.role);
     await user.save();
 
     res.json({

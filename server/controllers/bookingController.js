@@ -1,6 +1,16 @@
 const Booking = require('../models/Booking');
 const Tool = require('../models/Tool');
+const User = require('../models/User');
 const Notification = require('../models/Notification');
+
+// ─── Helper: compute badge from XP ──────────────────────────────────────────
+const computeBadge = (xp, role) => {
+  const suffix = role === 'Tool Owner' ? 'Owner' : role === 'Shopkeeper' ? 'Merchant' : 'Farmer';
+  if (xp >= 1000) return `Master ${suffix}`;
+  if (xp >= 500)  return `Expert ${suffix}`;
+  if (xp >= 100)  return `Skilled ${suffix}`;
+  return `Beginner ${suffix}`;
+};
 
 // @desc    Create a new booking request
 // @route   POST /api/bookings
@@ -110,6 +120,36 @@ const updateBookingStatus = async (req, res, next) => {
     }
 
     await booking.save();
+
+    // ── Gamification: Award XP + Coins ─────────────────────────────────────
+    try {
+      if (status === 'Approved') {
+        // Farmer gets XP + coins when their booking is approved
+        const farmer = await User.findById(booking.farmer);
+        if (farmer) {
+          farmer.xp = (farmer.xp || 0) + 50;
+          farmer.coins = (farmer.coins || 0) + 10;
+          farmer.badge = computeBadge(farmer.xp, farmer.role);
+          await farmer.save({ validateBeforeSave: false });
+        }
+      }
+      if (status === 'Completed') {
+        // Tool Owner earns XP + coins proportional to booking amount
+        const populatedTool = await Tool.findById(booking.tool._id || booking.tool);
+        if (populatedTool) {
+          const owner = await User.findById(populatedTool.owner);
+          if (owner) {
+            const coinsEarned = Math.max(5, Math.round((booking.totalAmount || 0) / 100));
+            owner.xp = (owner.xp || 0) + 30 + coinsEarned;
+            owner.coins = (owner.coins || 0) + coinsEarned;
+            owner.badge = computeBadge(owner.xp, owner.role);
+            await owner.save({ validateBeforeSave: false });
+          }
+        }
+      }
+    } catch (gamificationErr) {
+      console.error('Gamification update failed (non-critical):', gamificationErr.message);
+    }
 
     // Notify Farmer of status change
     const notification = await Notification.create({

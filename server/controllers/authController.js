@@ -61,6 +61,7 @@ const registerUser = async (req, res, next) => {
 
     const allowedRoles = ['Farmer', 'Tool Owner', 'Shopkeeper', 'Buyer'];
     const userRole = allowedRoles.includes(role) ? role : 'Farmer';
+    const defaultBadge = userRole === 'Tool Owner' ? 'Beginner Owner' : userRole === 'Shopkeeper' ? 'Beginner Merchant' : 'Beginner Farmer';
 
     const user = await User.create({
       name: name.trim(),
@@ -68,6 +69,7 @@ const registerUser = async (req, res, next) => {
       password,
       phone: phone.trim(),
       role: userRole,
+      badge: defaultBadge,
       village: village || '',
       district: district || '',
       state: state || '',

@@ -78,7 +78,12 @@ const userSchema = new mongoose.Schema({
   coins: { type: Number, default: 0 },
   badge: {
     type: String,
-    enum: ['Beginner Farmer', 'Skilled Farmer', 'Expert Farmer', 'Master Farmer'],
+    enum: [
+      'Beginner Farmer', 'Skilled Farmer', 'Expert Farmer', 'Master Farmer',
+      'Beginner Owner', 'Skilled Owner', 'Expert Owner', 'Master Owner',
+      'Beginner Merchant', 'Skilled Merchant', 'Expert Merchant', 'Master Merchant',
+      'Super Admin'
+    ],
     default: 'Beginner Farmer'
   },
   // Account status
