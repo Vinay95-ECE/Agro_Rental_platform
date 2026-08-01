@@ -15,7 +15,7 @@
     "axios": "^1.4.0",
     "framer-motion": "^10.12.16",
     "leaflet": "^1.9.4",
-    "lucide-react": "^0.263.0",
+    "lucide-react": "^1.28.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-dropzone": "^15.0.0",

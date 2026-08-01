@@ -409,11 +409,30 @@ const Dashboards = () => {
     ? ['overview', 'products', 'analytics', 'kyc']
     : ['users', 'kyc', 'analytics'];
 
+  const tabIcons = {
+    overview: BarChart3,
+    bookings: Calendar,
+    payments: CreditCard,
+    disease: Microscope,
+    kyc: ShieldCheck,
+    requests: FileText,
+    'my-tools': Tractor,
+    analytics: TrendingUp,
+    products: ShoppingBag,
+    users: Users
+  };
+
   const tabLabels = {
-    overview: '📊 Overview', bookings: '📅 Bookings', payments: '💳 Payments',
-    disease: '🔬 Scans', kyc: '🛡️ KYC', requests: '📩 Requests',
-    'my-tools': '🚜 My Tools', analytics: '📈 Analytics',
-    products: '🛒 Products', users: '👥 Users'
+    overview: 'Overview', 
+    bookings: 'Bookings', 
+    payments: 'Payments',
+    disease: 'Scans', 
+    kyc: 'KYC', 
+    requests: 'Requests',
+    'my-tools': 'My Tools', 
+    analytics: 'Analytics',
+    products: 'Products', 
+    users: 'Users'
   };
 
   return (
@@ -496,19 +515,23 @@ const Dashboards = () => {
 
       {/* Tabs */}
       <div className="flex gap-1 flex-wrap bg-slate-900/50 border border-slate-800 rounded-xl p-1">
-        {tabs.map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-3 py-2 rounded-lg text-[11px] font-bold transition-all ${
-              activeTab === tab
-                ? 'bg-emerald-600 text-white shadow'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            {tabLabels[tab]}
-          </button>
-        ))}
+        {tabs.map(tab => {
+          const Icon = tabIcons[tab] || Activity;
+          return (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[11px] font-bold transition-all ${
+                activeTab === tab
+                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/10'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+              }`}
+            >
+              <Icon size={12} strokeWidth={2.5} />
+              {tabLabels[tab]}
+            </button>
+          );
+        })}
       </div>
 
       {loading ? (
