@@ -1,8 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
-import { Mic, ArrowRight, Star, Shield, Cpu, RefreshCw, HelpCircle, BookOpen } from 'lucide-react';
+import { Mic, ArrowRight, Star, Shield, Cpu, RefreshCw, HelpCircle, BookOpen, TrendingUp } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
+import axios from 'axios';
+
+// ─── Animated Count-Up Hook ───────────────────────────────────────────────────
+const useCountUp = (target, duration = 1800, isVisible = false) => {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    if (!isVisible || target === 0) return;
+    let start = 0;
+    const step = target / (duration / 16);
+    const timer = setInterval(() => {
+      start += step;
+      if (start >= target) { setCount(target); clearInterval(timer); }
+      else setCount(Math.floor(start));
+    }, 16);
+    return () => clearInterval(timer);
+  }, [target, duration, isVisible]);
+  return count;
+};
+
+// ─── Stat Item ────────────────────────────────────────────────────────────────
+const StatItem = ({ value, label, prefix = '', suffix = '', color = 'text-white', loading, isVisible }) => {
+  const animVal = useCountUp(value, 1800, isVisible);
+  const display = loading
+    ? <span className="inline-block w-20 h-8 bg-slate-800 rounded-lg animate-pulse" />
+    : <>{prefix}{value < 1 ? value : animVal.toLocaleString()}{suffix}</>;
+  return (
+    <div className="space-y-1">
+      <p className={`text-3xl sm:text-4xl font-extrabold ${color}`}>{display}</p>
+      <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">{label}</p>
+    </div>
+  );
+};
 
 
 const Home = () => {
@@ -11,6 +43,43 @@ const Home = () => {
   const toast = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [isRecording, setIsRecording] = useState(false);
+
+  // ─── Live Platform Stats ────────────────────────────────────────────────────
+  const [stats, setStats] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsVisible, setStatsVisible] = useState(false);
+  const statsRef = useRef(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const { data } = await axios.get('/api/stats');
+        if (data.success) {
+          setStats(data.stats);
+          setLastUpdated(new Date());
+        }
+      } catch (err) {
+        console.error('Stats fetch failed:', err.message);
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+    fetchStats();
+    // Refresh every 2 minutes
+    const interval = setInterval(fetchStats, 120000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Intersection Observer: animate count-up only when section is visible
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setStatsVisible(true); },
+      { threshold: 0.3 }
+    );
+    if (statsRef.current) observer.observe(statsRef.current);
+    return () => observer.disconnect();
+  }, []);
 
 
   const startVoiceSearch = () => {
@@ -66,21 +135,21 @@ const Home = () => {
       tag: 'Agronomy Guide',
       title: 'Optimizing Rabi Wheat Yields: Seed Selection & Nitrogen Ratios',
       desc: 'Learn how applying balanced NPK fertilizers and certified HD-3086 seed varieties doubles harvest sizes.',
-      img: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&q=80&w=600'
+      img: '/images/blog_wheat.png'
     },
     {
       id: 2,
       tag: 'Water Tech',
       title: 'Drip Irrigation vs Flood: Water Conservation in Dry Seasons',
       desc: 'An analytical report explaining how precision drip networks save up to 40% more groundwater in summer.',
-      img: 'https://images.unsplash.com/photo-1595273670150-db0a3e39843c?auto=format&fit=crop&q=80&w=600'
+      img: '/images/blog_irrigation.png'
     },
     {
       id: 3,
       tag: 'Market Forecast',
       title: 'Crop Mandi Pricing Forecast: Rabi Wheat Trends 2026',
       desc: 'Understanding supply thresholds, export options, and state district linear prediction models.',
-      img: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&q=80&w=600'
+      img: '/images/blog_mandi.png'
     }
   ];
 
@@ -135,14 +204,14 @@ const Home = () => {
         <div className="flex-1 w-full relative z-10">
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent rounded-2xl z-10 pointer-events-none"></div>
           <img
-            src="https://images.unsplash.com/photo-1592982537447-7440770cbfc9?auto=format&fit=crop&q=80&w=800"
+            src="/images/hero_farmer.png"
             alt="AgriRent Farming Equipment"
             className="w-full h-80 sm:h-96 object-cover rounded-2xl border border-slate-800 shadow-2xl relative"
           />
           <div className="absolute -bottom-6 -left-6 bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center gap-3 shadow-xl z-20">
-            <span className="text-3xl">🚜</span>
+            <img src="/images/tractor_owner.png" alt="Tractor" className="w-10 h-10 rounded-lg object-cover" />
             <div>
-              <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Available nearby</p>
+              <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Available Nearby</p>
               <p className="text-sm font-bold text-white">42 Active Machines</p>
             </div>
           </div>
@@ -214,29 +283,86 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Platform Statistics */}
-      <section className="bg-slate-900/40 border border-slate-800 rounded-3xl p-8 sm:p-12 text-center space-y-8">
-        <div className="max-w-2xl mx-auto space-y-2">
-          <h2 className="text-3xl font-bold text-white">Platform Statistics</h2>
-          <p className="text-slate-400 text-sm">Empowering agricultural growth through technological connectivity.</p>
+      {/* Platform Statistics — Live Data */}
+      <section ref={statsRef} className="relative bg-slate-900/40 border border-slate-800 rounded-3xl p-8 sm:p-12 text-center space-y-8 overflow-hidden">
+        {/* Subtle glow */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-emerald-500/5 via-transparent to-transparent pointer-events-none" />
+        <div className="max-w-2xl mx-auto space-y-3">
+          <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-3 py-1 text-[10px] text-emerald-400 font-bold uppercase tracking-wider">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            Live Platform Data
+          </div>
+          <h2 className="text-3xl font-bold text-white flex items-center justify-center gap-2">
+            <TrendingUp size={24} className="text-emerald-400" /> Platform Statistics
+          </h2>
+          <p className="text-slate-400 text-sm">Real-time numbers from our live database — updated every 2 minutes.</p>
+          {lastUpdated && (
+            <p className="text-[10px] text-slate-600">
+              Last updated: {lastUpdated.toLocaleTimeString()}
+            </p>
+          )}
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-          <div className="space-y-1">
-            <p className="text-3xl sm:text-4xl font-extrabold text-emerald-400">₹4.8M+</p>
-            <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Total Rental Volume</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-3xl sm:text-4xl font-extrabold text-white">12,000+</p>
-            <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Active Farmers</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-3xl sm:text-4xl font-extrabold text-white">850+</p>
-            <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Verified Tool Owners</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-3xl sm:text-4xl font-extrabold text-emerald-400">98.2%</p>
-            <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">KYC Approval Rate</p>
-          </div>
+          <StatItem
+            label="Total Rental Revenue"
+            prefix="₹"
+            suffix={stats?.totalRevenue >= 1000 ? '+' : ''}
+            value={stats ? Math.round(stats.totalRevenue / 1000) : 0}
+            color="text-emerald-400"
+            loading={statsLoading}
+            isVisible={statsVisible}
+          />
+          <StatItem
+            label="Active Farmers"
+            suffix="+"
+            value={stats?.totalFarmers || 0}
+            color="text-white"
+            loading={statsLoading}
+            isVisible={statsVisible}
+          />
+          <StatItem
+            label="Registered Tools"
+            suffix="+"
+            value={stats?.totalTools || 0}
+            color="text-white"
+            loading={statsLoading}
+            isVisible={statsVisible}
+          />
+          <StatItem
+            label="KYC Approval Rate"
+            suffix="%"
+            value={stats?.kycApprovalRate || 0}
+            color="text-emerald-400"
+            loading={statsLoading}
+            isVisible={statsVisible}
+          />
+        </div>
+        {/* Secondary row */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-6 pt-4 border-t border-slate-800">
+          <StatItem
+            label="Verified Tool Owners"
+            suffix="+"
+            value={stats?.totalToolOwners || 0}
+            color="text-blue-400"
+            loading={statsLoading}
+            isVisible={statsVisible}
+          />
+          <StatItem
+            label="Crops Listed"
+            suffix="+"
+            value={stats?.totalCrops || 0}
+            color="text-amber-400"
+            loading={statsLoading}
+            isVisible={statsVisible}
+          />
+          <StatItem
+            label="Completed Bookings"
+            suffix="+"
+            value={stats?.totalBookings || 0}
+            color="text-purple-400"
+            loading={statsLoading}
+            isVisible={statsVisible}
+          />
         </div>
       </section>
 
@@ -248,7 +374,7 @@ const Home = () => {
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="glass-card overflow-hidden rounded-2xl flex flex-col sm:flex-row">
-            <img src="https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&q=80&w=400" className="w-full sm:w-48 h-48 sm:h-auto object-cover" alt="Farmer success" />
+            <img src="/images/farmer_baldev.png" className="w-full sm:w-48 h-48 sm:h-auto object-cover" alt="Farmer Baldev Singh success" />
             <div className="p-6 flex flex-col justify-between space-y-4">
               <p className="text-sm text-slate-300 italic leading-relaxed">
                 "AgriRent Hub helped me rent a high-power rotavator for my Rabi wheat crop fields at half the market price. The booking calendar is so simple!"
@@ -260,7 +386,7 @@ const Home = () => {
             </div>
           </div>
           <div className="glass-card overflow-hidden rounded-2xl flex flex-col sm:flex-row">
-            <img src="https://images.unsplash.com/photo-1595273670150-db0a3e39843c?auto=format&fit=crop&q=80&w=400" className="w-full sm:w-48 h-48 sm:h-auto object-cover" alt="Tool owner success" />
+            <img src="/images/tractor_owner.png" className="w-full sm:w-48 h-48 sm:h-auto object-cover" alt="Tractor owner Karan Johal" />
             <div className="p-6 flex flex-col justify-between space-y-4">
               <p className="text-sm text-slate-300 italic leading-relaxed">
                 "I had a tractor sitting idle for 20 days a month. Listing it on this platform has brought a steady secondary income. Best AgriTech startup!"

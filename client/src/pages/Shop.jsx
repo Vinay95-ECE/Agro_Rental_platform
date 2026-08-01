@@ -198,7 +198,7 @@ const Shop = () => {
                 <div key={product._id} className="glass-card overflow-hidden rounded-2xl border border-slate-800 flex flex-col justify-between">
                   <div className="relative">
                     <img
-                      src={product.images?.[0] || 'https://images.unsplash.com/photo-1622383563227-04401ab4e5ea?auto=format&fit=crop&q=80&w=400'}
+                      src={product.images?.[0] || 'https://images.unsplash.com/photo-1585664811087-47f65abbad64?auto=format&fit=crop&q=90&w=600'}
                       alt={product.name}
                       className="h-44 w-full object-cover"
                     />

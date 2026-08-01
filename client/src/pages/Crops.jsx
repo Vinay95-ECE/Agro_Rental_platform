@@ -245,7 +245,7 @@ const Crops = () => {
               {crops.map((crop) => (
                 <div key={crop._id} className="glass-card overflow-hidden rounded-2xl border border-slate-800 flex flex-col justify-between">
                   <img
-                    src={crop.images?.[0] || 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&q=80&w=400'}
+                    src={crop.images?.[0] || 'https://images.unsplash.com/photo-1471193945509-9ad0617afabf?auto=format&fit=crop&q=90&w=600'}
                     alt={crop.cropName}
                     className="h-44 w-full object-cover"
                   />

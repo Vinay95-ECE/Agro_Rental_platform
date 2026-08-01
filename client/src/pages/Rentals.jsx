@@ -390,7 +390,7 @@ const Rentals = () => {
                     }`}
                   >
                     <img
-                      src={tool.images?.[0] || 'https://images.unsplash.com/photo-1592982537447-7440770cbfc9?auto=format&fit=crop&q=80&w=400'}
+                      src={tool.images?.[0] || '/images/tractor_owner.png'}
                       alt={tool.name}
                       className="h-44 w-full object-cover"
                     />

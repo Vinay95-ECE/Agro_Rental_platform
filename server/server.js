@@ -160,6 +160,7 @@ app.use('/api/payments',      require('./routes/paymentRoutes'));
 app.use('/api/weather',       require('./routes/weatherRoutes'));
 app.use('/api/upload',        require('./routes/uploadRoutes'));
 app.use('/api/admin',         require('./routes/adminRoutes'));
+app.use('/api/stats',         require('./routes/statsRoutes'));
 
 // ─── Health Check ──────────────────────────────────────────────────────────────
 app.get('/', (req, res) => {

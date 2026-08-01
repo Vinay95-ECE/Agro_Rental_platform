@@ -178,8 +178,8 @@ const Chat = () => {
   const simulateImageSend = () => {
     // Premium custom image attachment mockup
     const dummyImages = [
-      'https://images.unsplash.com/photo-1592982537447-7440770cbfc9?auto=format&fit=crop&q=80&w=300',
-      'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&q=80&w=300'
+      'https://images.unsplash.com/photo-1574823452491-b8073c7c92ab?auto=format&fit=crop&q=90&w=600',
+      'https://images.unsplash.com/photo-1596271741002-d541c7ed3093?auto=format&fit=crop&q=90&w=600'
     ];
     const imagePayload = {
       roomId,
