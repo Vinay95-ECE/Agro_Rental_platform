@@ -232,7 +232,8 @@ const forgotPassword = async (req, res, next) => {
       return next(new Error('Email is required.'));
     }
 
-    const user = await User.findOne({ email });
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
       // Return success even if user not found (security best practice)
       return res.json({ success: true, message: 'If an account exists, a reset link has been sent.' });
