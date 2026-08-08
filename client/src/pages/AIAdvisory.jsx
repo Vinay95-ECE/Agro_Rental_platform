@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import axios from 'axios';
-import { Bot, Send, Volume2, Sparkles, Copy, Check, RefreshCw, Mic, MicOff, Trash2, ChevronRight } from 'lucide-react';
+import { Bot, Send, Volume2, VolumeX, Sparkles, Copy, Check, RefreshCw, Mic, MicOff, Trash2, ChevronRight } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import ReactMarkdown from 'react-markdown';
 
@@ -19,7 +19,7 @@ const TypingDots = () => (
 );
 
 // ─── Message Bubble ───────────────────────────────────────────────────────────
-const MessageBubble = ({ log, onSpeak }) => {
+const MessageBubble = ({ log, onSpeak, isCurrentlySpeaking }) => {
   const [copied, setCopied] = useState(false);
   const isUser = log.sender === 'Me';
 
@@ -77,9 +77,12 @@ const MessageBubble = ({ log, onSpeak }) => {
               </button>
               <button
                 onClick={() => onSpeak(log.text)}
-                className="flex items-center gap-1 text-slate-500 hover:text-white transition-colors text-[10px] font-semibold"
+                className={`flex items-center gap-1 transition-colors text-[10px] font-semibold ${
+                  isCurrentlySpeaking ? 'text-emerald-400 animate-pulse' : 'text-slate-500 hover:text-white'
+                }`}
               >
-                <Volume2 size={11} /> Read Aloud
+                {isCurrentlySpeaking ? <VolumeX size={11} /> : <Volume2 size={11} />}
+                {isCurrentlySpeaking ? 'Stop Reading' : 'Read Aloud'}
               </button>
             </div>
           )}
@@ -132,6 +135,7 @@ Your intelligent farming assistant powered by AI.
   const [showSuggestions, setShowSuggestions] = useState(true);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const [activeSpeechText, setActiveSpeechText] = useState('');
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -149,14 +153,41 @@ Your intelligent farming assistant powered by AI.
   }, [token]);
 
   const speak = useCallback((text) => {
-    if ('speechSynthesis' in window) {
+    if (!('speechSynthesis' in window)) return;
+
+    if (activeSpeechText === text) {
       window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text.replace(/[#*`]/g, ''));
-      utterance.lang = language === 'hi' ? 'hi-IN' : 'en-IN';
-      utterance.rate = 0.9;
-      window.speechSynthesis.speak(utterance);
+      setActiveSpeechText('');
+      return;
     }
-  }, [language]);
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text.replace(/[#*`]/g, ''));
+    
+    // Auto-detect Hindi characters for voice language selection
+    const hasHindi = /[\u0900-\u097F]/.test(text);
+    utterance.lang = hasHindi ? 'hi-IN' : 'en-IN';
+    utterance.rate = 0.9;
+
+    utterance.onend = () => {
+      setActiveSpeechText('');
+    };
+    utterance.onerror = () => {
+      setActiveSpeechText('');
+    };
+
+    setActiveSpeechText(text);
+    window.speechSynthesis.speak(utterance);
+  }, [activeSpeechText]);
+
+  // Clean up speech on unmount
+  useEffect(() => {
+    return () => {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
   const sendMessage = useCallback(async (msgText) => {
     const text = (msgText || message).trim();
@@ -257,7 +288,7 @@ Your intelligent farming assistant powered by AI.
           {/* Messages Area */}
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
             {chatLogs.map((log, i) => (
-              <MessageBubble key={i} log={log} onSpeak={speak} />
+              <MessageBubble key={i} log={log} onSpeak={speak} isCurrentlySpeaking={activeSpeechText === log.text} />
             ))}
 
             {/* Typing indicator */}

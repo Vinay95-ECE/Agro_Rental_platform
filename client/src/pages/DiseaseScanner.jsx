@@ -4,7 +4,8 @@ import axios from 'axios';
 import {
   Upload, Camera, RefreshCw, AlertTriangle, ShieldCheck, Activity,
   Trash2, Clock, Leaf, Zap, FlaskConical, Bug, ShieldAlert, Video,
-  Play, Square, Radio, CheckCircle, XCircle, Info, ChevronRight
+  Play, Square, Radio, CheckCircle, XCircle, Info, ChevronRight,
+  Volume2, VolumeX
 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 
@@ -65,6 +66,51 @@ const DiagnosisPanel = ({ result, imagePreview, analysisMethod }) => {
   const isInvalid = result?.diseaseName?.includes('Invalid') || result?.diseaseName?.includes('Cannot Analyze');
   const isIncomplete = result?.diseaseName?.includes('Incomplete') || result?.diseaseName?.includes('Setup Required');
 
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const toggleSpeak = () => {
+    if (!('speechSynthesis' in window)) return;
+
+    if (isPlaying) {
+      window.speechSynthesis.cancel();
+      setIsPlaying(false);
+      return;
+    }
+
+    const textToSpeak = `
+      Diagnosis Report. Disease detected is: ${result.diseaseName}.
+      Severity level is: ${result.severity}.
+      Confidence level is: ${result.confidenceScore || result.confidence || ''}.
+      Explanation: ${result.explanation || ''}.
+      Treatment Protocol: ${result.treatment || ''}.
+      Fertilizer recommendation: ${result.fertilizer || ''}.
+      Pesticide or Fungicide advice: ${result.pesticide || ''}.
+      Prevention advice: ${result.prevention || ''}.
+    `.replace(/[#*`]/g, '');
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+    
+    // Auto-detect Hindi script characters to set the Hindi voice
+    const hasHindi = /[\u0900-\u097F]/.test(result.diseaseName + (result.explanation || ''));
+    utterance.lang = hasHindi ? 'hi-IN' : 'en-IN';
+    utterance.rate = 0.9;
+
+    utterance.onend = () => setIsPlaying(false);
+    utterance.onerror = () => setIsPlaying(false);
+
+    setIsPlaying(true);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  useEffect(() => {
+    return () => {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
   if (isInvalid) {
     return (
       <div className="h-full flex flex-col items-center justify-center py-12 px-6 space-y-4 text-center">
@@ -94,7 +140,7 @@ const DiagnosisPanel = ({ result, imagePreview, analysisMethod }) => {
         result.severity === 'Severe' || result.severity === 'High' ? 'bg-red-950/20' : 'bg-amber-950/20'
       }`}>
         <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1">
+          <div className="space-y-1.5 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <Activity size={16} className="text-emerald-400" />
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Diagnosis Report</span>
@@ -110,6 +156,22 @@ const DiagnosisPanel = ({ result, imagePreview, analysisMethod }) => {
               )}
             </div>
             <h3 className="text-sm font-extrabold text-white leading-snug">{result.diseaseName}</h3>
+            
+            {/* Speak Audio Toggle Trigger */}
+            <div className="pt-1.5">
+              <button
+                onClick={toggleSpeak}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all border ${
+                  isPlaying
+                    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 animate-pulse'
+                    : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
+                }`}
+                title={isPlaying ? "Stop Voice Report" : "Listen to Voice Report"}
+              >
+                {isPlaying ? <VolumeX size={12} /> : <Volume2 size={12} />}
+                {isPlaying ? 'STOP SPEECH' : 'LISTEN REPORT'}
+              </button>
+            </div>
           </div>
           <SeverityBadge severity={result.severity} />
         </div>
