@@ -117,8 +117,8 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
 
 // ─── Rate Limiting ─────────────────────────────────────────────────────────────
-// Trust the first proxy (required for Render/Heroku to get real client IPs)
-app.set('trust proxy', 1);
+// Trust all proxies (Render uses multiple layers like Cloudflare + internal routers)
+app.set('trust proxy', true);
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 500,
