@@ -3,8 +3,8 @@ const nodemailer = require("nodemailer");
 const createTransporter = () =>
   nodemailer.createTransport({
     host: process.env.SMTP_HOST || "smtp.gmail.com",
-    port: Number(process.env.SMTP_PORT) || 587,
-    secure: false,
+    port: 465,
+    secure: true,
     connectionTimeout: 10000,
     greetingTimeout: 10000,
     socketTimeout: 10000,
