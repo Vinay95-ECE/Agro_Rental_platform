@@ -1,4 +1,5 @@
 require('dotenv').config();
+const dns = require('dns');
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -7,6 +8,9 @@ const helmet = require('helmet');
 const mongoSanitize = require('express-mongo-sanitize');
 const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
+
+// Force Node.js to prefer IPv4 (Fixes ENETUNREACH on Render)
+dns.setDefaultResultOrder('ipv4first');
 
 const connectDB = require('./config/db');
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
@@ -124,7 +128,8 @@ const apiLimiter = rateLimit({
   max: 500,
   message: { success: false, message: 'Too many requests. Please try again in 15 minutes.' },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  validate: { trustProxy: false } // Suppress the ERR_ERL_PERMISSIVE_TRUST_PROXY warning
 });
 
 const authLimiter = rateLimit({
