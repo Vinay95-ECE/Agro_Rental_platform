@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const User = require('../models/User');
+const { sendPasswordReset } = require('../utils/email');
 
 // ─── Token Helpers ─────────────────────────────────────────────────────────────
 const generateAccessToken = (id) =>
@@ -244,10 +245,21 @@ const forgotPassword = async (req, res, next) => {
     user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
     await user.save({ validateBeforeSave: false });
 
-    // In production, send email here. For now, return token in dev mode.
-    const response = { success: true, message: 'Reset instructions sent.' };
+    // Send reset email via Gmail SMTP (Nodemailer – free)
+    try {
+      await sendPasswordReset(normalizedEmail, resetToken);
+    } catch (emailErr) {
+      // Log the error but do NOT reveal it to the client (security + UX)
+      console.error('[Email] Failed to send password reset email:', emailErr.message);
+    }
+
+    // Always return a generic success message regardless of whether email was sent
+    // (prevents user enumeration attacks)
+    const response = { success: true, message: 'If an account with that email exists, a reset link has been sent.' };
+    // Expose token in dev mode only – never in production
     if (process.env.NODE_ENV !== 'production') {
-      response.resetToken = resetToken; // Only expose in dev
+      response.resetToken = resetToken;
+      response._devNote = 'Token exposed for development only. Remove in production.';
     }
 
     res.json(response);

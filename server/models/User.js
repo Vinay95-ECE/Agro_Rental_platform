@@ -1,5 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+// Security utilities for masking and coordinate fuzzing
+const { maskEmail, maskPhone, fuzzCoordinates } = require('../utils/security');
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -125,18 +127,26 @@ userSchema.pre('save', async function(next) {
   }
 });
 
+// Coordinate fuzzing middleware – round coordinates to 3 decimal places
+userSchema.pre('save', function(next) {
+  if (this.isModified('location.coordinates') && Array.isArray(this.location.coordinates)) {
+    this.location.coordinates = fuzzCoordinates(this.location.coordinates);
+  }
+  next();
+});
+
 // Compare password method
 userSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-// Safe user object (no sensitive fields)
+// Safe user object (no sensitive fields) – masks email and phone
 userSchema.methods.toSafeObject = function() {
   return {
     _id: this._id,
     name: this.name,
-    email: this.email,
-    phone: this.phone,
+    email: maskEmail(this.email),
+    phone: maskPhone(this.phone),
     role: this.role,
     kycStatus: this.kycStatus,
     avatar: this.avatar,
