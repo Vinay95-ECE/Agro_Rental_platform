@@ -159,6 +159,29 @@ python disease_detector.py
 
 ---
 
+## 👥 Contributors
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/Vinay95-ECE">
+        <img src="https://github.com/Vinay95-ECE.png" width="100px;" alt="Vinay Kumar"/><br />
+        <sub><b>Vinay Kumar</b></sub>
+      </a><br />
+      <sub>🔧 Backend · 🤖 AI/ML · ☁️ DevOps · 🗄️ Database</sub>
+    </td>
+    <td align="center">
+      <a href="https://github.com/nimish9335">
+        <img src="https://github.com/nimish9335.png" width="100px;" alt="Nimish"/><br />
+        <sub><b>Nimish</b></sub>
+      </a><br />
+      <sub>🎨 Frontend · 💻 UI/UX · ⚛️ React Components</sub>
+    </td>
+  </tr>
+</table>
+
+---
+
 ## Tech Stack
 
 - **Frontend**: React 18 + Redux Toolkit + TailwindCSS + Recharts + Socket.io
